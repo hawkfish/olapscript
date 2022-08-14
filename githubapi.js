@@ -19,45 +19,51 @@ This example code has been put together by Martin Hawksey https://mashe.hawksey.
  * Getting a file less than 1MB. 
  * See https://developer.github.com/v3/repos/contents/#get-contents
  */
-function getSmallFileFromGithub(){
+function getSmallFileFromGithub(source, branch='heads/master', user='hawkfish', repo='hawkfish.github.io') {
   // set token service
   Github.setTokenService(function(){ return getGithubService_().getAccessToken();});
   // set the repository wrapper
-  // Github.setRepo('YOUR_USERNAME', 'YOUR_REPO');
-  Github.setRepo('mhawksey', 'mhawksey.github.io'); // e.g. Github.setRepo('mhawksey', 'mhawksey.github.io');
-  var branch = 'heads/master'; // you can switch to differnt branch
+  Github.setRepo(user, repo);
   
   // getting a single file object
-  var git_file_obj = Github.Repository.getContents({ref: branch}, 'tweets/data/js/payload_details.js');
+  var git_file_obj = Github.Repository.getContents({ref: branch}, source);
   var git_file = Utilities.newBlob(Utilities.base64Decode(git_file_obj.content)).getDataAsString();
-  
+  /*
   var git_dir = Github.Repository.getContents({ref: branch}, 'tweets/data/js/');
   // In my project I included a getContentsByUrl which uses a git url which is useful if working within the tree
   var git_file_by_url = Github.Repository.getContentsByUrl(git_dir[0].git_url);
   
   Logger.log(git_dir);
+  */
+  return git_file;
+}
+
+/**
+ *
+ */
+function splitpath(path) {
+    const pos = path.lastIndexOf('/');
+    return {dir: pos.slice(0, pos), file: pos.slice(pos + 1)};
 }
 
 /**
  * For files over 1MB you get to fetch as a blob using sha reference. 
  * See https://developer.github.com/v3/git/blobs/#get-a-blob
  */
-function getLargeFileFromGithub(){
+function getLargeFileFromGithub(source, branch='heads/master', user='hawkfish', repo='hawkfish.github.io') {
   // set token service
   Github.setTokenService(function(){ return getGithubService_().getAccessToken();});
   // set the repository wrapper
-  // Github.setRepo('YOUR_USERNAME', 'YOUR_REPO'); 
-  Github.setRepo('mhawksey', 'mhawksey.github.io'); // e.g. Github.setRepo('mhawksey', 'mhawksey.github.io');
-  var branch = 'heads/master'; // you can switch to differnt branch
-  
+  Github.setRepo(user, repo);
+  const parts = splitpath(source);
   // first we get the git hub directory tree e.g. here getting the tweets sub-dir
-  var tweet_dir = Github.Repository.getContents({ref: 'master'}, 'tweets');
+  var tweet_dir = Github.Repository.getContents({ref: branch}, parts.dir);
   // filtering for the filename we are looking for
-  var git_file = tweet_dir.filter(function(el){ return el.name === 'tweets.csv' });
+  var git_file = tweet_dir.filter(function(el){ return el.name === parts.file });
   // getting the file
   var git_blob = Utilities.newBlob(Utilities.base64Decode(Github.Repository.getBlob(git_file[0].sha).content)).getDataAsString();
   
-  Logger.log(git_blob);
+  return git_blob;
 }
 
 /**
@@ -65,35 +71,29 @@ function getLargeFileFromGithub(){
  * See https://developer.github.com/v3/repos/contents/#create-a-file
  * and https://developer.github.com/v3/repos/contents/#update-a-file
  */
-function commitSingleFileToGithub() {
+function commitSingleFileToGithub(target, content, msg, branch='master', user='hawkfish', repo='hawkfish.github.io') {
   // set token service
   Github.setTokenService(function(){ return getGithubService_().getAccessToken();});
   // set the repository wrapper
-  // Github.setRepo('YOUR_USERNAME', 'YOUR_REPO'); // e.g. Github.setRepo('mhawksey', 'mhawksey.github.io');
-  Github.setRepo('mhawksey', 'mhawksey.github.io'); 
-  var branch = 'master'; // you can switch to differnt branch
+  Github.setRepo(user, repo);
   
   // Sending string content
-  var test_json = {foo:'bar'};
   try { // if file exists need to get it's sha and update instead
-    var resp = Github.Repository.createFile(branch, 'test2.json', JSON.stringify(test_json), "YOUR FILE COMMIT MESSAGE HERE");
+    const resp = Github.Repository.createFile(branch, target, content, msg);
   } catch(e) {
-    test_json.newbit = "some more data";
-    var git_file_obj = Github.Repository.getContents({ref: branch}, 'test2.json');
-    Github.Repository.updateFile(branch, 'test2.json', JSON.stringify(test_json), git_file_obj.sha, "YOUR UPDATED FILE COMMIT MESSAGE HERE");
+    const git_file_obj = Github.Repository.getContents({ref: branch}, target);
+    Github.Repository.updateFile(branch, target, content, git_file_obj.sha, msg);
   }
 }
 
 /**
  * Adding multiple files to Github as a single commit.
  */
-function commitMultipleFilesToGithub() {
+function commitMultipleFilesToGithub(files, msg, branch='master', user='hawkfish', repo='hawkfish.github.io') {
   // set token service
   Github.setTokenService(function(){ return getGithubService_().getAccessToken();});
   // set the repository wrapper
-  //Github.setRepo('YOUR_USERNAME', 'YOUR_REPO'); // e.g. Github.setRepo('mhawksey', 'mhawksey.github.io');
-  Github.setRepo('mhawksey', 'mhawksey.github.io');
-  var branch = 'heads/master'; // you can switch to differnt branch
+  Github.setRepo(user, repo);
   
   var newTree = []; // new tree to commit
   
@@ -125,7 +125,7 @@ function commitMultipleFilesToGithub() {
   var newTreeSha = Github.Repository.createTree(newTree, initialTreeSha).sha; 
   
   // 4. Create the commit
-  var newCommitSha = Github.Repository.commit(initialCommitSha, newTreeSha, "YOUR COMMIT MESSAGE HERE").sha;                
+  var newCommitSha = Github.Repository.commit(initialCommitSha, newTreeSha, msg).sha;                
   
   // 5. Link commit to the reference
   var commitResponse = Github.Repository.updateHead(branch, newCommitSha, false);
