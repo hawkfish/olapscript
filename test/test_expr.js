@@ -133,3 +133,66 @@ describe('RefExpr', function() {
         });
     });
 });
+
+const FuncExpr = olapscript.FuncExpr;
+describe('FuncExpr', function() {
+    const count = 5;
+    const namespace = {column: {type: undefined, data: Array(count).fill(null)}};
+    const selection = namespace.column.data.map((v, rowid) => rowid);
+
+    const nullary = function () {return 27;};
+    const unary = function (x) {return x * 5;};
+    const binary = (x, y) => x - y;
+    
+    const expectEvaluate = function(expr, expected) {
+        const actual = expr.evaluate(namespace, selection);
+        expect(actual.data).to.be.an('array').lengthOf(expected.length);
+        expected.forEach((e, i) => expect(e).to.equal(actual.data[i]));
+        
+    };
+    describe('constructor', function() {
+        it('should store a nullary function', function() {
+            const e = new FuncExpr(nullary, []);
+            expect(e.func).to.equal(nullary);
+            expect(e.args).to.be.an('array').lengthOf(0);
+        });
+        it('should store a unary function', function() {
+            const e = new FuncExpr(unary, [new ConstExpr(1)]);
+            expect(e.func).to.equal(unary);
+            expect(e.args).to.be.an('array').lengthOf(1);
+        });
+        it('should store a binary function', function() {
+            const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
+            expect(e.func).to.equal(binary);
+            expect(e.args).to.be.an('array').lengthOf(2);
+        });
+    });
+    describe('alias', function() {
+        it('should alias a nullary function', function() {
+            const e = new FuncExpr(nullary, []);
+            expect(e.alias()).to.equal('nullary()');
+        });
+        it('should alias a unary function', function() {
+            const e = new FuncExpr(unary, [new ConstExpr(1)]);
+            expect(e.alias()).to.equal('unary(1)');
+        });
+        it('should alias a binary function', function() {
+            const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
+            expect(e.alias()).to.equal('binary(7, 4)');
+        });
+    });
+    describe('evaluate', function() {
+        it('should evaluate a nullary function', function() {
+            const e = new FuncExpr(nullary, []);
+            expectEvaluate(e, Array(count).fill(nullary()));
+        });
+        it('should evaluate a unary function', function() {
+            const e = new FuncExpr(unary, [new ConstExpr(1)]);
+            expectEvaluate(e, Array(count).fill(unary(1)));
+        });
+        it('should evaluate a binary function', function() {
+            const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
+            expectEvaluate(e, Array(count).fill(binary(7, 4)));
+        });
+    });
+});

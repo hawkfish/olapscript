@@ -94,7 +94,7 @@ class FuncExpr extends Expr {
   }
 
   alias() {
-    return this.func.name + "(" + args.map(arg => arg.alias()).join(", ") + ")";
+    return this.func.name + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
   }
 }
 
