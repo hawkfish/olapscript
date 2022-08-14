@@ -18,25 +18,29 @@ describe('ConstExpr', function() {
     const namespace = {name: {type: undefined, data: Array(count)}};
     const selection = namespace.name.data.map((v, rowid) => rowid);
     
-    const expectScalar = function(setup, datatype) {
+    const expectConstructor = function(setup, datatype) {
         const e = new ConstExpr(setup);
         expect(e.type).to.equal('constant');
         expect(e.constant).to.equal(setup);
         expect(e.datatype).to.equal(datatype);
-
+    };
+    const expectAlias = function(setup, expected) {
+        expect(new ConstExpr(setup).alias()).to.equal(expected);
+    };
+    const expectEvaluate = function(setup) {
+        const e = new ConstExpr(setup);
         const col = e.evaluate(namespace, selection);
         expect(col.type).to.equal(e.datatype);
         expect(col.data).to.be.an('array').lengthOf(count);
         col.data.forEach(v => expect(v).to.equal(setup));
     };
+    
     describe('Constructor', function() {
         it('should store a NULL constant', function() {
             const setup = null;
             const e = new ConstExpr(setup);
             expect(e.type).to.equal('constant');
             expect(e.constant).to.be.null;
-            expect(e.datatype).to.equal('object');
-            expect(e.alias()).to.equal('null');
             
             const col = e.evaluate(namespace, selection);
             expect(col.type).to.equal(e.datatype);
@@ -45,18 +49,52 @@ describe('ConstExpr', function() {
             
         });
         it('should store a string constant', function() {
-            expectScalar('String', 'string');
+            expectConstructor('String', 'string');
         });
         it('should store a numeric constant', function() {
-            expectScalar(3.15149, 'number');
+            expectConstructor(3.15149, 'number');
         });
         it('should store an Array constant', function() {
-            expectScalar([0, 1, 2, 3], 'object');
+            expectConstructor([0, 1, 2, 3], 'object');
         });
         it('should store an Object constant', function() {
-            expectScalar({key: "Value"}, 'object');
+            expectConstructor({key: "Value"}, 'object');
         });
-   });
+    });
+    describe('alias', function() {
+        it('should return a string for nulls', function() {
+            expectAlias(null, 'null');
+        });
+        it('should return a string for numbers', function() {
+            expectAlias(3.25, '3.25');
+        });
+        it('should return a string for strings', function() {
+            expectAlias('String', 'String');
+        });
+        it('should return a string for arrays', function() {
+            expectAlias([0, 1, 2, 3], '0,1,2,3');
+        });
+        it('should return a string for objects', function() {
+            expectAlias({key: "Value"}, '[object Object]');
+        });
+    });
+    describe('evaluate', function() {
+        it('should return a null column for nulls', function() {
+            expectEvaluate(null, 'null');
+        });
+        it('should return a number column for numbers', function() {
+            expectEvaluate(3.25);
+        });
+        it('should return a string column for strings', function() {
+            expectEvaluate('String');
+        });
+        it('should return an Array column for arrays', function() {
+            expectEvaluate([0, 1, 2, 3]);
+        });
+        it('should return an Object column for objects', function() {
+            expectEvaluate({key: "Value"});
+        });
+    });
 });
 
 
