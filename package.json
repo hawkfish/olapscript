@@ -1,0 +1,30 @@
+{
+  "name": "olapscript",
+  "version": "0.2.0",
+  "scripts": {
+    "test": "mocha"
+  },
+  "description": "An OLAP engine for Google App Script",
+  "main": "olap-script.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hawkfish/olapscript.git"
+  },
+  "keywords": [
+    "olap",
+    "appscript"
+  ],
+  "author": "Richard Wesley",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hawkfish/olapscript/issues"
+  },
+  "homepage": "https://github.com/hawkfish/olapscript#readme",
+  "devDependencies": {
+    "chai": "^4.3.6",
+    "mocha": "*"
+  }
+}

@@ -94,7 +94,7 @@ class FuncExpr extends Expr {
   }
 
   alias() {
-    return this.func.name + "(" + args.map(arg => arg.alias()).join(", ") + ")";
+    return this.func.name + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
   }
 }
 
@@ -158,7 +158,7 @@ class ConstExpr extends Expr {
   }
 
   alias() {
-    return this.constant.toString();
+    return String(this.constant);
   }
 }
 
@@ -171,9 +171,9 @@ class ConstExpr extends Expr {
 ConstExpr.prototype.evaluate = function(namespace, selection) {
  const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
  const that = this;
- return new Column(this.type, Array(count).fill(that.constant));
-}
-
+ return new Column(this.datatype, Array(count).fill(that.constant));
+};
+    
 /**
  * A table class for performing relational operations on Google Sheets
  * 
@@ -738,3 +738,7 @@ Table.prototype.limit = function(count, offset) {
 
   return new Table(this.namespace, this.ordinals, selection, this);
 }
+
+module.exports  = {
+    Expr, FuncExpr, ConstExpr, RefExpr
+};
