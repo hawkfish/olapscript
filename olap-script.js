@@ -172,8 +172,8 @@ ConstExpr.prototype.evaluate = function(namespace, selection) {
  const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
  const that = this;
  return new Column(this.type, Array(count).fill(that.constant));
-}
-
+};
+    
 /**
  * A table class for performing relational operations on Google Sheets
  * 
@@ -737,3 +737,7 @@ Table.prototype.limit = function(count, offset) {
 
   return new Table(this.namespace, this.ordinals, selection, this);
 }
+
+module.exports  = {
+    Expr, FuncExpr, ConstExpr, RefExpr
+};
