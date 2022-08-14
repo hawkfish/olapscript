@@ -158,7 +158,7 @@ class ConstExpr extends Expr {
   }
 
   alias() {
-    return this.constant.toString();
+    return String(this.constant);
   }
 }
 
@@ -171,7 +171,7 @@ class ConstExpr extends Expr {
 ConstExpr.prototype.evaluate = function(namespace, selection) {
  const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
  const that = this;
- return new Column(this.type, Array(count).fill(that.constant));
+ return new Column(this.datatype, Array(count).fill(that.constant));
 };
     
 /**
