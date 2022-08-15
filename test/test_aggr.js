@@ -1,6 +1,6 @@
 const expect = require ("chai").expect;
-const aggr = require('../modules/aggr');
-const expr = require('../modules/expr');
+const aggr = require('../src/aggr');
+const expr = require('../src/expr');
 
 const CountStar = aggr.CountStar;
   describe('CountStar', function() {

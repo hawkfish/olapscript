@@ -1,5 +1,5 @@
 const expect = require ("chai").expect;
-const column = require('../modules/column');
+const column = require('../src/column');
 
 const Column = column.Column;
 

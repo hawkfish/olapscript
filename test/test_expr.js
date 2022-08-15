@@ -1,6 +1,6 @@
 const expect = require ("chai").expect;
-const expr = require('../modules/expr');
-const Column = require('../modules/column').Column;
+const expr = require('../src/expr');
+const Column = require('../src/column').Column;
 
 const Expr = expr.Expr;
 describe('Expr', function() {
