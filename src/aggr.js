@@ -54,20 +54,25 @@ class Count extends CountStar {
  */
 class Sum extends Count {
   constructor() {
+    super();
     this.sum = null;
   }
-};
-
-Sum.prototype.update = function(val) {
-  Count.prototype.update(val);
-  if (val !== null) {
-    if (this.sum == null) {
-      this.sum = val;
-    } else {
-      this.sum += val;
+  
+  update(val) {
+    super.update(val);
+    if (val !== null) {
+      if (this.sum == null) {
+        this.sum = val;
+      } else {
+        this.sum += val;
+      }
     }
   }
-}
+  
+  finalize() {
+    return this.sum;
+  }
+};
 
 /**
  * The AVG aggregate function
