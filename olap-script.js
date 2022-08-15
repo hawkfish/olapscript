@@ -738,6 +738,8 @@ Table.prototype.limit = function(count, offset) {
   return new Table(this.namespace, this.ordinals, selection, this);
 }
 
-module.exports  = {
-    Expr, FuncExpr, ConstExpr, RefExpr
+if ((typeof ScriptApp) === 'undefined') {
+    module.exports  = {
+        Expr, FuncExpr, ConstExpr, RefExpr
+    };
 };
