@@ -139,7 +139,7 @@ class RefExpr extends Expr {
   evaluate(namespace, selection) {
     const result = namespace[this.reference];
     if (!result) {
-      throw new ReferenceError("Unknwon column: " + this.reference);
+      throw new ReferenceError("Unknown column: " + this.reference);
     }
     return result;
   }
@@ -332,13 +332,14 @@ Table.prototype.toSheet = function(sheet) {
 
   // Write the column headers in the first row
   const header = sheet.getRange(1, 1, 1, lastColumn);
-  this.ordinals.forEach((name, i) => header.getCell(1, i+1).setValue(name));
+  header.setValues([this.ordinals,]);
 
   // Write the column data to the columns
   if (lastRow > 1) {
     const range = sheet.getRange(2, 1, lastRow - 1, lastColumn);
     const that = this;
-    this.ordinals.forEach((name, cid) => that.selection.forEach((selid, rid) => range.getCell(rid + 1, cid + 1).setValue(that.namespace[name].data[selid])));
+    // Row-major order
+    range.setValues(that.selection.map(selid => this.ordinals.map(name => that.namespace[name].data[selid])));
   }
 
   return this;
@@ -411,7 +412,7 @@ Table.prototype.where = function(predicate) {
  * Add aliases for SQL clauses that are internally just filtering.
  */
 Table.prototype.having = Table.prototype.where;
-Table.prototype.qualified = Table.prototype.where;
+Table.prototype.qualify = Table.prototype.where;
 
 /**
  * Unnest an array column by producing multiple rows for each array element.
