@@ -245,7 +245,10 @@ Table.prototype.toSheet = function(sheet) {
 Table.prototype.getRow = function(rowid) {
   const that = this;
   const selid = this.selection[rowid];
-  return this.ordinals.reduce((row, name) => Object.assign(row, {name: that.namespace[name].data[selid]}), {});
+  return this.ordinals.reduce(function (row, name) {
+    return { ...row, [name]: that.namespace[name].data[selid]};
+    },
+    {});
 }
 
 /**
@@ -329,6 +332,35 @@ Table.prototype.unnest = function(columnName) {
   });
 
   return new Table(namespace, this.ordinals, selection, this);
+}
+
+/**
+ * Implements the UNION ALL operation.
+ * This is what normal people think of as a UNION: just concatenate the columns.
+ *
+ * @param {Table} second - The second Table in the union
+ * @param {Object} options - Concatenation options
+ *
+ * Options include:
+ *  by - 'position' (default), 'name'
+ */
+Table.prototype.unionAll = function(second, options_p) {
+  const options = Object.assign({}, {by: 'position'} , options_p || {});
+
+  const byName = (options.by == 'name');
+  const first = this;
+  const namespace = this.ordinals.reduce(function(namespace, name, colIndex) {
+      const target = namespace[name].data;
+      var source = first.namespace[name].data;
+      first.selection.forEach((selid, rowid) => target.push(source[selid]));
+      source = second.namespace[byName ? name : second.ordinals[colIndex]].data;
+      second.selection.forEach((selid, rowid) => target.push(source[selid]));
+      return namespace;
+    },
+    this.emptyNamespace_()
+  );
+
+  return new Table(namespace, this.ordinals, undefined, this);
 }
 
 /**
