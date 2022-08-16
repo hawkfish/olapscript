@@ -1,7 +1,8 @@
 const expect = require ("chai").expect;
-const olapscript = require('../olap-script');
+const expr = require('../src/expr');
+const Column = require('../src/column').Column;
 
-const Expr = olapscript.Expr;
+const Expr = expr.Expr;
 describe('Expr', function() {
     describe('Constructor', function() {
         it('should store the type', function() {
@@ -12,12 +13,13 @@ describe('Expr', function() {
     });
 });
 
-const ConstExpr = olapscript.ConstExpr;
+const ConstExpr = expr.ConstExpr;
 describe('ConstExpr', function() {
     const count = 5;
-    const namespace = {name: {type: undefined, data: Array(count)}};
+    const data = Array(count).fill(null);
+    const namespace = {name: new Column(undefined, data)};
     const selection = namespace.name.data.map((v, rowid) => rowid);
-    
+
     const expectConstructor = function(setup, datatype) {
         const e = new ConstExpr(setup);
         expect(e.type).to.equal('constant');
@@ -34,19 +36,19 @@ describe('ConstExpr', function() {
         expect(col.data).to.be.an('array').lengthOf(count);
         col.data.forEach(v => expect(v).to.equal(setup));
     };
-    
+
     describe('Constructor', function() {
         it('should store a NULL constant', function() {
             const setup = null;
             const e = new ConstExpr(setup);
             expect(e.type).to.equal('constant');
             expect(e.constant).to.be.null;
-            
+
             const col = e.evaluate(namespace, selection);
             expect(col.type).to.equal(e.datatype);
             expect(col.data).to.be.an('array').lengthOf(count);
             col.data.forEach(v => expect(v).to.be.null);
-            
+
         });
         it('should store a string constant', function() {
             expectConstructor('String', 'string');
@@ -98,7 +100,7 @@ describe('ConstExpr', function() {
 });
 
 
-const RefExpr = olapscript.RefExpr;
+const RefExpr = expr.RefExpr;
 describe('RefExpr', function() {
     const count = 5;
     const namespace = {column: {type: undefined, data: Array(count)}};
@@ -134,7 +136,7 @@ describe('RefExpr', function() {
     });
 });
 
-const FuncExpr = olapscript.FuncExpr;
+const FuncExpr = expr.FuncExpr;
 describe('FuncExpr', function() {
     const count = 5;
     const namespace = {column: {type: undefined, data: Array(count).fill(null)}};
@@ -143,12 +145,12 @@ describe('FuncExpr', function() {
     const nullary = function () {return 27;};
     const unary = function (x) {return x * 5;};
     const binary = (x, y) => x - y;
-    
+
     const expectEvaluate = function(expr, expected) {
         const actual = expr.evaluate(namespace, selection);
         expect(actual.data).to.be.an('array').lengthOf(expected.length);
         expected.forEach((e, i) => expect(e).to.equal(actual.data[i]));
-        
+
     };
     describe('constructor', function() {
         it('should store a nullary function', function() {
