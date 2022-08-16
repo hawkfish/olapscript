@@ -1,16 +1,16 @@
 /**
- * This module implements a relational pipeline tookit 
+ * This module implements a relational pipeline tookit
  * for manipulating Google Sheets using App Script.
- * 
+ *
  * The central object is a Table, which uses a column oriented storage model
  * for holding Values. The values can be read from a sheet or provided as
  * JavaScript data structures. Tables can be written out to target sheets
  * when processing is complete.
- * 
+ *
  * To support pipelining, the Table class provides data streaming methods for
  * relational and data cleaning operations. This lets you write SQL-like chains
  * of operations:
- * 
+ *
  * Table.fromSheet(<source sheet>)
  *      .select(<expressions>)
  *      .unnest(<array column>)
@@ -21,162 +21,51 @@
  *      .orderby(<ordering>)
  *      .limit(100)
  *      .toSheet(<target sheet>);
- * 
- * Pipelines avoid copying data wherever possible, so intermediate results 
+ *
+ * Pipelines avoid copying data wherever possible, so intermediate results
  * can be cached without worrying about later processing.
- * 
+ *
  * Expressions are implemented as a simple tree of nodes, and any function
  * can be used in a function node. Column reference expressions make no copies.
- * Aggregates are a separate type of object, with initialize, update and finalize 
- * functions, and the arguments can be arbitraary expressions. Ordering is also 
+ * Aggregates are a separate type of object, with initialize, update and finalize
+ * functions, and the arguments can be arbitraary expressions. Ordering is also
  * expression-based.
- * 
+ *
  * Note that some of this functionality is not yet implemented, and the error checking
  * is pretty much non-existent, but the architecture is based on 50 years of database
  * theory and is hopefully easy to express data validation and sheet generation with.
- * 
+ *
  * Copyright © 2022 Richard Wesley and Ellen Ratajak
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
- * and associated documentation files (the “Software”), to deal in the Software without restriction, 
- * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the “Software”), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all copies 
+ *
+ * The above copyright notice and this permission notice shall be included in all copies
  * or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
- * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /**
- * A class for modeling a single column. It has a data type and an Array of values.
- * 
- * @type {Type} The data type of the column
- * @data {Array} The data values.
+ * Hack around App Script import mess
  */
-class Column {
-  constructor(type, data) {
-    this.type = type || typeof undefined;
-    this.data = data || [];
-  }
-  getRowCount() {
-    return this.data.length;
-  }
-}
 
-/**
- * A base class for expressions.
- * 
- * @param {String} type - The type of expression
- */
-class Expr {
-  constructor(type) {
-    this.type = type;
-  }
-}
-
-/**
- * A class for modelling function expressions
- * 
- * @param {Function} func - The function to evaluate
- * @param {Array} args - The input expressions for the function call.
- */
-class FuncExpr extends Expr {
-  constructor(func, args) {
-    super('function');
-    this.func = func;
-    this.args = args;
-  }
-
-  alias() {
-    return this.func.name + "(" + args.map(arg => arg.alias()).join(", ") + ")";
-  }
-}
-
-/**
- * Evaluates a function expression by evaluating the input columns 
- * and applying the function to each one
- * 
- * @param {Object} namespace - A mapping from names to Columns
- * @param {Array} selection - The valid row ids
- * @returns {Column} The result of evaluating the function on each input row.
- */
-FuncExpr.prototype.evaluate = function(namespace, selection) {
-  const inputs = this.args.map(arg => arg.evaluate(namespace, selection));
-  const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
-  const that = this;
-  const data = selection.reduce(function(data, selid) {
-      data[selid] = that.func.apply(that.func, inputs.map(column => column.data[selid]));
-      return data;
-    },
-    new Array(count).fill(null)
-  );
-
-
-  return new Column(undefined, data);
-}
-
-/**
- * A class for modeling column references
- * 
- * @param reference - The name of the column being referenced
- */
-class RefExpr extends Expr {
-  constructor(reference) {
-    super('reference');
-    this.reference = reference;
-  }
-
-  alias() {
-    return this.reference;
-  }
-
-  evaluate(namespace, selection) {
-    const result = namespace[this.reference];
-    if (!result) {
-      throw new ReferenceError("Unknown column: " + this.reference);
-    }
-    return result;
-  }
-}
-
-/**
- * A class for modelling constant scalars
- * 
- * @param {Any} constant - The constant value.
- */
-class ConstExpr extends Expr {
-  constructor(constant) {
-    super('constant');
-    this.constant = constant;
-    this.datatype = typeof constant;
-  }
-
-  alias() {
-    return this.constant.toString();
-  }
-}
-
-/**
- * Evaluate a constant expression
- * 
- * @param namespace - A mapping from names to Columns
- * @returns {Column} - A column containing the constants.
- */
-ConstExpr.prototype.evaluate = function(namespace, selection) {
- const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
- const that = this;
- return new Column(this.type, Array(count).fill(that.constant));
+if (typeof Column === 'undefined') {
+  Column = require("./column").Column;
+  const expr = require("./expr");
+  ConstExpr = expr.ConstExpr;
 }
 
 /**
  * A table class for performing relational operations on Google Sheets
- * 
+ *
  * @param {Object} namespace - A mapping from names to Columns
  * @param {Array} ordinals - The order of the columns
  * @param {Array}  selection - The positions in columns.
@@ -245,7 +134,7 @@ Table.normalizeBinding = Table.normaliseBinding;
 
 /**
  * Utility to build an empty set of columns
- * 
+ *
  * @returns {Object}
  */
 Table.prototype.emptyNamespace_ = function() {
@@ -259,7 +148,7 @@ Table.prototype.emptyNamespace_ = function() {
 
 /**
  * Create a Table from a given sheet. By default it will use the active sheet.
- * 
+ *
  * @param {Sheet} sheet
  * @param {Object} options
  * @returns {Table}
@@ -283,7 +172,7 @@ Table.fromSheet = function(sheet, options) {
 
 /**
  * Create a Table from a set of row Objects
- * 
+ *
  * @param {Array} rows
  * @param {Object} options
  * @returns {Table}
@@ -295,7 +184,7 @@ Table.fromRows = function(rows, options_p) {
   const namespace = ordinals.reduce(function (namespace, name) {
     namespace[name] = new Column(typeof rows[0][name])
     return namespace;
-  }, 
+  },
   {});
   rows.forEach(row => ordinals.forEach(name => namespace[name].data.push(row[name])));
   const selection = rows.map((row, rowid) => rowid);
@@ -305,7 +194,7 @@ Table.fromRows = function(rows, options_p) {
 
 /**
  * Write a Table out to a given sheet
- * 
+ *
  * @param {Sheet} sheet
  * @returns {Table}
  */
@@ -315,14 +204,14 @@ Table.prototype.toSheet = function(sheet) {
   if (lastColumn == 0) {
     return this;
   }
-  
+
   // Make it the correct size
   var maxColumns = sheet.getMaxColumns();
   if (maxColumns < lastColumn) {
     sheet.insertColumnsAfter(maxColumns, lastColumn - maxColumns);
     maxColumns = lastColumn;
   }
-  
+
   const lastRow = 1 + this.getRowCount();
   var maxRows = sheet.getMaxRows();
   if (maxRows < lastRow) {
@@ -347,9 +236,9 @@ Table.prototype.toSheet = function(sheet) {
 
 /**
  * Returns a row as an Object.
- * Note that this is not the internal model, 
+ * Note that this is not the internal model,
  * so it should be used only for truly row-based operations.
- * 
+ *
  * @param {Integer} rowid
  * @returns {Object}
  */
@@ -361,11 +250,11 @@ Table.prototype.getRow = function(rowid) {
 
 /**
  * Projects a table to new column names.
- * The mappings are taking in order and 
+ * The mappings are taking in order and
  * the new table has only the mapped columns.
- * Eventually, they should be expressions 
+ * Eventually, they should be expressions
  * not just column references.
- * 
+ *
  * @param {Array} expressions - An ordered list of expressions and aliases.
  * @returns {Table}
  */
@@ -383,10 +272,10 @@ Table.prototype.select = function(expressions) {
 
 /**
  * Filters a Table based on a predicate
- * 
+ *
  * @param {Object} predicate - A Boolean function
  * @returns {Table}
- * 
+ *
  */
 Table.prototype.where = function(predicate) {
   // Normalise arguments
@@ -404,7 +293,7 @@ Table.prototype.where = function(predicate) {
       return selection;
     },
     []);
-  
+
   return new Table(this.namespace, this.ordinals, selection, this);
 }
 
@@ -417,7 +306,7 @@ Table.prototype.qualify = Table.prototype.where;
 /**
  * Unnest an array column by producing multiple rows for each array element.
  * Rows with empty arrays are filtered out.
- * 
+ *
  * @param {String} columnName - The array column,
  * @returns {Table}
  */
@@ -425,7 +314,7 @@ Table.prototype.unnest = function(columnName) {
   const that = this;
   const namespace = this.emptyNamespace_();
   const selection = [];
- 
+
   this.selection.forEach(function(selid, rowid) {
     const values = that.namespace[columnName].data[selid];
     values.forEach(function(value) {
@@ -447,7 +336,7 @@ Table.prototype.unnest = function(columnName) {
  * are AND-ed and involve equality of key pairs, one from each table.
  * This is the most common kind of join, and is used for looking up data,
  * or connecting tables with primary/foreign key matches.
- * 
+ *
  * @param {Table} build - The right hand side (smaller) table.
  * @keys {Array} keys - The key column name pairs [{left: right}, ...]
  * @returns {Table}
@@ -460,7 +349,7 @@ Table.prototype.equiJoin = function(build, keys=[{probe: 'fk', build: 'pk'}]) {
   // Only build columns that do not have name collisions will be imported.
   const buildImports = build.ordinals.filter(name => !probe.namespace.hasOwnProperty(name));
   const ordinals = probe.ordinals.map(name => name).concat(buildImports);
-  
+
   const namespace = probe.emptyNamespace_();
   const buildNamespace = build.emptyNamespace_();
   buildImports.forEach(name => namespace[name] = buildNamespace[name]);
@@ -516,17 +405,17 @@ Table.normaliseAggr = function(aggr) {
 }
 /**
  * Implements the aggregation operator (GROUP BY).
- * 
+ *
  * @param {Array} groups - The grouping expressions.
  * @param (Array} aggrs - The aggregate funtions
  * @returns {Table}
- * 
+ *
  * Aggregate functions are classes with two methods.
  * Construction initializes the state, which is then updated
- * 
+ *
  *  update - Update the state with a new value
  *  finalize - Compute the final value from the state
- * 
+ *
  */
 Table.prototype.groupby = function(groups, aggrs) {
   // Normalise the inputs
@@ -535,7 +424,7 @@ Table.prototype.groupby = function(groups, aggrs) {
     groups = [groups,];
   }
   groups = groups.map(group => Table.normaliseBinding(group));
-  
+
   if (aggrs && !Array.isArray(aggrs)) {
     aggrs = [aggrs,];
   }
@@ -543,21 +432,21 @@ Table.prototype.groupby = function(groups, aggrs) {
   aggrs = aggrs.map(aggr => Table.normaliseAggr(aggr));
 
   const that = this;
-  
+
   // Set up the results
   const ordinals = groups.map(group => group.as).concat(aggrs.map(aggr => aggr.as));
   const namespace = ordinals.reduce(function(namespace, name) {
-    namespace[name] = new Column(); 
+    namespace[name] = new Column();
     return namespace;
   },
   {});
 
   // Evaluate the grouping keys
   const groupbys = groups.map(group => group.expr.evaluate(that.namespace, that.selection));
-  
+
   // Evaluate the aggregate input expressions
   const inputs = aggrs.map(aggr => aggr.args.map(arg => arg.evaluate(that.namespace, that.selection)));
-  
+
   // Evaluate the aggregates using a hash table
   const ht = this.selection.reduce(function(ht, selid, rowid) {
     const values = groupbys.map(groupby => groupby.data[selid]);
@@ -584,72 +473,8 @@ Table.prototype.groupby = function(groups, aggrs) {
 }
 
 /**
- * The COUNTSTAR aggregate function.
- * This also works as a single value state base class
- * 
- */
-class CountStar {
-  constructor() {
-    this.count = 0;
-  }
-
-  update() {
-    ++this.count;
-  }
-
-  finalize() {
-    return this.count;
-  }
-};
-
-/**
- * The COUNT aggregate function
- * 
- */
-class Count extends CountStar {
-  update(val) {
-    this.count += (val !== null);
-  }
-};
-
-/**
- * The SUM aggregate function
- * 
- */
-class Sum extends Count {
-  constructor() {
-    this.sum = null;
-  }
-};
-
-Sum.prototype.update = function(val) {
-  Count.prototype.update(val);
-  if (val !== null) {
-    if (this.sum == null) {
-      this.sum = val;
-    } else {
-      this.sum += val;
-    }
-  }
-}
-
-/**
- * The AVG aggregate function
- * 
- */
-class Avg extends Sum {
-  finalize() {
-    if (this.count) {
-      return super.finalize() / this.count;
-    } else {
-      return null;
-    }
-  }
-}
-
-/**
  * Make it easier to write ORDER BY expressions
- * 
+ *
  * @param order - The order spec to normalise
  */
 Table.normaliseOrder = function(order) {
@@ -665,7 +490,7 @@ Table.normaliseOrder = function(order) {
 
 /**
  * Implements the ORDER BY relational operator
- * 
+ *
  * @param {Array} orders - An array of ordering specifications {expr, asc, nullsFirst}
  * @returns {Table}
  */
@@ -723,7 +548,7 @@ Table.prototype.orderby = function(orders) {
 
 /**
  * Implements the LIMIT clause with a count and optional offset.
- * 
+ *
  * @param {Number} count - The maximum number of rows to return
  * @param {Number} offset - The first row to return (default 1)
  */
@@ -738,3 +563,9 @@ Table.prototype.limit = function(count, offset) {
 
   return new Table(this.namespace, this.ordinals, selection, this);
 }
+
+if (typeof module !== 'undefined') {
+  module.exports  = {
+      Table
+  }
+};
