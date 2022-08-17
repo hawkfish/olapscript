@@ -147,14 +147,18 @@ Table.prototype.emptyNamespace_ = function() {
 }
 
 /**
- * Create a Table from a given sheet. By default it will use the active sheet.
+ * Create a Table from a given sheet.
  *
  * @param {Sheet} sheet
  * @param {Object} options
  * @returns {Table}
  */
-Table.fromSheet = function(sheet, options) {
-  const range = sheet.getRange("A1").getDataRegion();
+Table.fromSheet = function(sheet, options_p) {
+  const defaults = {
+    limit: sheet.getLastRow()
+  };
+  const options = Object.assign({}, defaults, options_p || {});
+  const range = sheet.getRange(1, 1, options.limit + 1, sheet.getLastColumn());
   const values = range.getValues();
   const namespace = {}
   const ordinals = Array(0);
@@ -232,6 +236,88 @@ Table.prototype.toSheet = function(sheet) {
   }
 
   return this;
+}
+
+/**
+ * List all the tables in a Spreadsheet
+ * 
+ * SELECT * FROM information_schema.tables
+ * 
+ * @param {Spreadsheet} schema - The spreadsheet to query
+ * @returns {Table}
+ */
+Table.tables = function(schema) {
+  const ordinals = [
+    'table_catalog', 
+    'table_schema',
+    'table_name',
+    'table_type',
+    'self_referencing_column_name',
+    'reference_generation',
+    'user_defined_type_catalog',
+    'user_defined_type_schema',
+    'user_defined_type_name',
+    'is_insertable_into',
+    'is_typed',
+    'commit_action'
+    ];
+
+  const template = ordinals.reduce(function(row, name) {row[name] = null; return row}, {});
+  template.table_schema = schema.getName();
+  template.table_type = "BASE TABLE";
+  template.is_insertable_into = 'YES';
+  template.is_typed = 'NO';
+  template.commit_action = 'NO';
+  const rows = schema.getSheets().map(sheet => Object.assign({}, template, {table_name: sheet.getName()}));
+ 
+  return Table.fromRows(rows, {ordinals: ordinals});
+}
+
+/**
+ * List all the columns in a Spreadsheet
+ * 
+ * SELECT * FROM information_schema.columns
+ * 
+ * @param {Spreadsheet} schema - The spreadsheet to query
+ * @returns {Table}
+ */
+Table.columns = function(schema) {
+  const ordinals = [
+    'table_catalog', 
+    'table_schema',
+    'table_name',
+    'column_name',
+    'ordinal_position',
+    'column_default',
+    'is_nullable',
+    'data_type',
+    'character_maximum_length',
+    'character_octet_length',
+    'numeric_precision',
+    'numeric_scale',
+    'datetime_precision'
+    ];
+  
+  const template = ordinals.reduce(function(row, name) {row[name] = null; return row}, {});
+  template.table_schema = schema.getName();
+  template.is_nullable = 'YES';
+  const rows = schema.getSheets().reduce(function(rows, sheet) {
+    const table = Table.fromSheet(sheet, {limit: 10});
+    return rows.concat(table.ordinals.map(function(column_name, ordinal_position) {
+      const column = table.namespace[column_name];
+      const row = {
+        table_name: sheet.getName(), 
+        column_name: column_name, 
+        ordinal_position: ordinal_position + 1, 
+        data_type: column.type
+      };
+
+      return Object.assign({}, template, row);
+    }));
+  },
+  []);
+
+  return Table.fromRows(rows);
 }
 
 /**
