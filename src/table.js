@@ -160,16 +160,33 @@ Table.fromSheet = function(sheet, options_p) {
   const options = Object.assign({}, defaults, options_p || {});
   const range = sheet.getRange(1, 1, options.limit + 1, sheet.getLastColumn());
   const values = range.getValues();
+
+  // Create unique column names
+  const unique = values[0].reduce((unique, key) => (unique[key] = 0, unique), {});
+  const ordinals = values[0].map(function(header) {
+    if (!unique[header]) {
+      ++unique[header];
+      return header;
+    }
+
+    var tag = ++unique[header];
+    var name = header + ' ' + tag;
+    while (name in unique) {
+      name = header + ' ' + ++tag;
+    }
+
+    return name;
+  });
+
   const namespace = {}
-  const ordinals = Array(0);
   // Pivot the data into columns
   for (var c = 0; c < range.getNumColumns(); ++c) {
     const data = Array.from(values, row => row[c]);
-    const name = data.shift();
+    data.shift();
+    const name = ordinals[c];
     const type = undefined;
-    const col = new Column(type, data);
+    const col = new Column(undefined, data);
     namespace[name] = col;
-    ordinals.push(name);
   }
   return new Table(namespace, ordinals, undefined, {name: sheet.getName()});
 }
@@ -240,15 +257,15 @@ Table.prototype.toSheet = function(sheet) {
 
 /**
  * List all the tables in a Spreadsheet
- * 
+ *
  * SELECT * FROM information_schema.tables
- * 
+ *
  * @param {Spreadsheet} schema - The spreadsheet to query
  * @returns {Table}
  */
 Table.tables = function(schema) {
   const ordinals = [
-    'table_catalog', 
+    'table_catalog',
     'table_schema',
     'table_name',
     'table_type',
@@ -269,21 +286,21 @@ Table.tables = function(schema) {
   template.is_typed = 'NO';
   template.commit_action = 'NO';
   const rows = schema.getSheets().map(sheet => Object.assign({}, template, {table_name: sheet.getName()}));
- 
+
   return Table.fromRows(rows, {ordinals: ordinals});
 }
 
 /**
  * List all the columns in a Spreadsheet
- * 
+ *
  * SELECT * FROM information_schema.columns
- * 
+ *
  * @param {Spreadsheet} schema - The spreadsheet to query
  * @returns {Table}
  */
 Table.columns = function(schema) {
   const ordinals = [
-    'table_catalog', 
+    'table_catalog',
     'table_schema',
     'table_name',
     'column_name',
@@ -297,7 +314,7 @@ Table.columns = function(schema) {
     'numeric_scale',
     'datetime_precision'
     ];
-  
+
   const template = ordinals.reduce(function(row, name) {row[name] = null; return row}, {});
   template.table_schema = schema.getName();
   template.is_nullable = 'YES';
@@ -306,9 +323,9 @@ Table.columns = function(schema) {
     return rows.concat(table.ordinals.map(function(column_name, ordinal_position) {
       const column = table.namespace[column_name];
       const row = {
-        table_name: sheet.getName(), 
-        column_name: column_name, 
-        ordinal_position: ordinal_position + 1, 
+        table_name: sheet.getName(),
+        column_name: column_name,
+        ordinal_position: ordinal_position + 1,
         data_type: column.type
       };
 
