@@ -59,6 +59,8 @@
 
 if (typeof Column === 'undefined') {
   Column = require("./column").Column;
+}
+if (typeof ConstExpr === 'undefined') {
   const expr = require("./expr");
   ConstExpr = expr.ConstExpr;
 }
@@ -473,10 +475,24 @@ Table.prototype.unionAll = function(second, options_p) {
  * or connecting tables with primary/foreign key matches.
  *
  * @param {Table} build - The right hand side (smaller) table.
- * @keys {Array} keys - The key column name pairs [{left: right}, ...]
+ * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>}, ...]
+ * @param {Object} options - Join options
  * @returns {Table}
+ *
+ * Defined options are:
+ *  type - "inner" (default), "left", "right", "full"
  */
-Table.prototype.equiJoin = function(build, keys=[{probe: 'fk', build: 'pk'}]) {
+Table.prototype.equiJoin = function(build, keys, options_p) {
+  // Normalise the options
+  const options = Object.assign({}, {type: 'inner'} , options_p || {});
+  const leftOuter = options.type in {left: null, full: null};
+  const rightOuter = options.type in {right: null, full: null};
+
+  // Normalise the arguments
+  if (!Array.isArray(keys)) {
+    keys = [keys,];
+  };
+  keys = keys.map(pair => ({build: Table.normaliseExpr(pair.build), probe: Table.normaliseExpr(pair.probe)}));
   const probe = this;
 
   // Sort out the output schema
@@ -489,10 +505,11 @@ Table.prototype.equiJoin = function(build, keys=[{probe: 'fk', build: 'pk'}]) {
   const buildNamespace = build.emptyNamespace_();
   buildImports.forEach(name => namespace[name] = buildNamespace[name]);
 
-  // Build keys => rowid
-  const buildKeys = keys.map(pair => pair.build);
+  // Build keys => expr
+  const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection));
+  const buildMatches = {};
   const ht = build.selection.reduce(function (ht, val, buildID) {
-    const key = JSON.stringify(buildKeys.map(name => build.namespace[name].data[buildID]));
+    const key = JSON.stringify(buildKeys.map(result => result.data[buildID]));
     const rows = ht.get(key);
     if (rows) {
       rows.push(buildID);
@@ -503,11 +520,13 @@ Table.prototype.equiJoin = function(build, keys=[{probe: 'fk', build: 'pk'}]) {
   }, new Map());
 
   // Probe the hash table and emit the new values
-  const probeKeys = keys.map(pair => pair.probe);
+  const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection));
+  const probeMatches = {}
   probe.selection.forEach(function (val, probeID) {
-    const key = JSON.stringify(buildKeys.map(name => build.namespace[name].data[probeID]));
+    const key = JSON.stringify(probeKeys.map(result => result.data[probeID]));
     const matches = ht.get(key);
     if (matches) {
+      probeMatches[probeID] = matches;
       matches.forEach(function(buildID) {
         // Copy the probe data
         probe.ordinals.forEach(function(name) {
@@ -516,10 +535,42 @@ Table.prototype.equiJoin = function(build, keys=[{probe: 'fk', build: 'pk'}]) {
         // Import the build data
         buildImports.forEach(function(name) {
           namespace[name].data.push(build.namespace[name].data[buildID]);
-        })
+        });
+        buildMatches[buildID] = true;
       });
     }
   });
+
+  // Emit any outer join pairs
+  if (leftOuter) {
+    probe.selection.forEach(function(probeID) {
+      if (!probeMatches[probeID]) {
+        // Copy the probe data
+        probe.ordinals.forEach(function(name) {
+          namespace[name].data.push(probe.namespace[name].data[probeID]);
+        });
+        // Use nulls for the build data
+        buildImports.forEach(function(name) {
+          namespace[name].data.push(null);
+        });
+      }
+    });
+  }
+
+  if (rightOuter) {
+    build.selection.forEach(function(buildID) {
+      if (!buildMatches[buildID]) {
+        // Use nulls for the probe data
+        probe.ordinals.forEach(function(name) {
+          namespace[name].data.push(null);
+        });
+        // Import the build data
+        buildImports.forEach(function(name) {
+          namespace[name].data.push(build.namespace[name].data[buildID]);
+        });
+      }
+    });
+  }
 
   return new Table(namespace, ordinals, undefined, this);
 }
