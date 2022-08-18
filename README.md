@@ -1,8 +1,8 @@
 # OLAPScript
-An OLAP engine for Google App Script
+An OLAP engine for Google Apps Script
 
 This module implements a relational pipeline tookit 
- for manipulating Google Sheets using App Script.
+ for manipulating Google Sheets using Apps Script.
  
  The central object is a Table, which uses a column oriented storage model
  for holding Values. The values can be read from a sheet or provided as
