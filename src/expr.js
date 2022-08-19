@@ -138,3 +138,52 @@ if (typeof module !== 'undefined') {
     Expr, FuncExpr, ConstExpr, RefExpr
   }
 };
+
+/**
+ *	The Scalar Expression library.
+ *
+ * Any scalar functions should go here - especially if some component wants to reason about a tree.
+ */
+Expr.nullWrapper_ = function(...args) {
+	const f = args.shift();
+	if (args.includes(null)) {
+		return null;
+	}
+	return f.apply(f, args);
+}
+
+/**
+ *	TRIM, LTRIM and RTRIM
+ *
+ * @param {string} untrimmed - The string to trim
+ * @returns {string}
+ */
+Expr.trim = function(untrimmed) {
+	return Expr.nullWrapper_(arg => arg.trim(), untrimmed);
+}
+
+Expr.ltrim = function(untrimmed) {
+	return Expr.nullWrapper_(arg => arg.replace(/^[\s]+/, ""), untrimmed);
+}
+
+Expr.rtrim = function(untrimmed) {
+	return Expr.nullWrapper_(arg => arg.replace(/[\s]+$/, ""), untrimmed);
+}
+
+/**
+ * NOW and TODAY
+ *
+ * Note that SQL uses UTC unless time zone support is in use.
+ *
+ */
+Expr.now = function() {
+	return new Date();
+}
+
+Expr.today = function() {
+	const dt = new Date();
+	const yyyy = dt.getUTCFullYear();
+	const mm = dt.getUTCMonth();
+	const dd = dt.getUTCDate();
+	return new Date(Date.UTC(yyyy, mm, dd));
+}
