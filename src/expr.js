@@ -19,7 +19,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
 /**
  * Hack around App Script import mess
  */
@@ -179,6 +178,56 @@ Expr.or = function(...args) {
 
 Expr.not = function(b) {
 	return (b == null) ? null : !b;
+}
+
+/**
+ *	eq, ne, le, lt, ge, gt, isdistinct, isnotdistinct, isnull, isnotnull
+ *
+ * Since Javascript doesn't expose these as function objects,
+ * we have them in the library for potentially reasoning about expression trees.
+ */
+Expr.eq = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l == r), lhs, rhs);
+}
+
+Expr.ne = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l != r), lhs, rhs);
+}
+
+Expr.lt = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l < r), lhs, rhs);
+}
+
+Expr.le = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l <= r), lhs, rhs);
+}
+
+Expr.gt = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l > r), lhs, rhs);
+}
+
+Expr.ge = function(lhs, rhs) {
+	return Expr.nullWrapper_((l, r) => (l >= r), lhs, rhs);
+}
+
+Expr.isdistinct = function(lhs, rhs) {
+	//	nulls are significant
+	return lhs != rhs;
+}
+
+Expr.isnotdistinct = function(lhs, rhs) {
+	//	nulls are significant
+	return lhs == rhs;
+}
+
+Expr.isnull = function(lhs) {
+	//	nulls are significant
+	return lhs == null;
+}
+
+Expr.isnotnull = function(lhs) {
+	//	nulls are significant
+	return lhs != null;
 }
 
 /**
