@@ -32,7 +32,7 @@ describe('Expression nodes', function() {
     };
     const expectEvaluate = function(setup) {
 			const e = new ConstExpr(setup);
-			const col = e.evaluate(namespace, selection);
+			const col = e.evaluate(namespace, selection, count);
 			expect(col.type).to.equal(e.datatype);
 			expect(col.data).to.be.an('array').lengthOf(count);
 			col.data.forEach(v => expect(v).to.equal(setup));
@@ -45,7 +45,7 @@ describe('Expression nodes', function() {
 				expect(e.type).to.equal('constant');
 				expect(e.constant).to.be.null;
 
-				const col = e.evaluate(namespace, selection);
+				const col = e.evaluate(namespace, selection, count);
 				expect(col.type).to.equal(e.datatype);
 				expect(col.data).to.be.an('array').lengthOf(count);
 				col.data.forEach(v => expect(v).to.be.null);
@@ -117,7 +117,7 @@ describe('Expression nodes', function() {
 			it('should be the reference', function() {
 				const setup = 'Referenced';
 				const e = new RefExpr(setup);
-				expect(e.alias()).to.equal(setup);
+				expect(e.alias()).to.equal('"' + setup + '"');
 			});
 		});
 		describe('evaluate', function() {
@@ -146,7 +146,7 @@ describe('Expression nodes', function() {
 		const binary = (x, y) => x - y;
 
 		const expectEvaluate = function(expr, expected) {
-			const actual = expr.evaluate(namespace, selection);
+			const actual = expr.evaluate(namespace, selection, count);
 			expect(actual.data).to.be.an('array').lengthOf(expected.length);
 			expected.forEach((e, i) => expect(e).to.equal(actual.data[i]));
 		};
@@ -194,6 +194,116 @@ describe('Expression nodes', function() {
 			it('should evaluate a binary function', function() {
 				const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
 				expectEvaluate(e, Array(count).fill(binary(7, 4)));
+			});
+		});
+	});
+
+	describe('CaseExpr', function() {
+		const CaseExpr = expr.CaseExpr;
+		const FuncExpr = expr.FuncExpr;
+		const RefExpr = expr.RefExpr;
+		describe('with no expression', function() {
+			it('should compute single cases', function() {
+				const length = 3;
+				const namespace = {
+					whens:  new Column(undefined, [true, false, null]),
+					thens:  new Column(undefined, Array(length).fill("Pravda")),
+					elses:  new Column(undefined, Array(length).fill("Izvestia"))
+				};
+
+				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens"), new RefExpr("elses")]);
+				expect(setup.args).to.be.an('array').lengthOf(length);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('case when "whens" then "thens" else "elses" end');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", "Izvestia"]);
+			});
+			it('should compute single cases with no else clause', function() {
+				const length = 3;
+				const namespace = {
+					whens:  new Column(undefined, [true, false, null]),
+					thens:  new Column(undefined, Array(length).fill("Pravda")),
+				};
+
+				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens")]);
+				expect(setup.args).to.be.an('array').lengthOf(length);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('case when "whens" then "thens" else null end');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", null, null]);
+			});
+			it('should compute double cases', function() {
+				const length = 3;
+				const namespace = {
+					whens1:  new Column(undefined, [true, false, null]),
+					thens1:  new Column(undefined, Array(length).fill("Pravda")),
+					whens2:  new Column(undefined, [false, true, null]),
+					thens2:  new Column(undefined, Array(length).fill("Izvestia")),
+					elses:   new Column(undefined, Array(length).fill("Nyet"))
+				};
+
+				const setup = new CaseExpr([
+					new RefExpr("whens1"), new RefExpr("thens1"),
+					new RefExpr("whens2"), new RefExpr("thens2"),
+					new RefExpr("elses")
+				]);
+				expect(setup.args).to.be.an('array').lengthOf(5);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('case when "whens1" then "thens1" when "whens2" then "thens2" else "elses" end');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", "Nyet"]);
+			});
+			it('should compute double cases with no else', function() {
+				const length = 3;
+				const namespace = {
+					whens1:  new Column(undefined, [true, false, null]),
+					thens1:  new Column(undefined, Array(length).fill("Pravda")),
+					whens2:  new Column(undefined, [false, true, null]),
+					thens2:  new Column(undefined, Array(length).fill("Izvestia")),
+				};
+
+				const setup = new CaseExpr([
+					new RefExpr("whens1"), new RefExpr("thens1"),
+					new RefExpr("whens2"), new RefExpr("thens2")
+				]);
+				expect(setup.args).to.be.an('array').lengthOf(5);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('case when "whens1" then "thens1" when "whens2" then "thens2" else null end');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", null]);
+			});
+			it('should short circuit', function() {
+				const length = 3;
+				const namespace = {
+					rowid: new Column(undefined, [1, 2, 3]),
+					whens: new Column(undefined, [true, false, null]),
+					elses: new Column(undefined, Array(length).fill("Izvestia"))
+				};
+
+				// Make sure we don't evaluate rowid 2.
+				const thens = new FuncExpr(function(r) {
+						if (r % 1) {
+							throw "Unreachable";
+						} else {
+							return "Pravda";
+						}
+					}, [new RefExpr("rowid")]);
+				const setup = new CaseExpr([new RefExpr("whens"), thens, new RefExpr("elses")]);
+				expect(setup.args).to.be.an('array').lengthOf(length);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('case when "whens" then ("rowid") else "elses" end');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", "Izvestia"]);
 			});
 		});
 	});

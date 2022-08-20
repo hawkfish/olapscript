@@ -5,8 +5,8 @@ const Expr = expr.Expr;
 describe('Date functions', function() {
 	describe('NOW', function() {
 		it('should return a Date close to the current time', function() {
-			const expected = new Date();
 			const actual = Expr.now();
+			const expected = new Date();
 			expect(actual).to.be.a('date');
 			expect(actual).to.not.be.above(expected);
 			expect(actual).to.be.below(new Date(expected.getTime() + 5000));
