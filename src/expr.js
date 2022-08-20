@@ -231,6 +231,32 @@ Expr.isnotnull = function(lhs) {
 }
 
 /**
+ * Casting functions
+ */
+
+/*
+ *
+ * The cast function really applies a function to a value.
+ *
+ * @param {Any} value - The value to cast
+ * @param {Function} type - The casting function.
+ * @returns {Any} The value cast to the given type
+ */
+Expr.cast = function(value, type) {
+	if (type == Array) {
+		if (Array.isArray(value)) {
+			return value;
+		} else {
+			return Expr.nullWrapper_(value => ([value]), value);
+		}
+	} else if (type == Date) {
+			return Expr.nullWrapper_(value => new Date(value), value);
+	} else {
+		return Expr.nullWrapper_(value => type(value), value);
+	}
+}
+
+/**
  *	TRIM, LTRIM and RTRIM
  *
  * @param {string} untrimmed - The string to trim
