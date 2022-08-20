@@ -64,15 +64,14 @@ class FuncExpr extends Expr {
  * @param {Array} selection - The valid row ids
  * @returns {Column} The result of evaluating the function on each input row.
  */
-FuncExpr.prototype.evaluate = function(namespace, selection) {
-  const inputs = this.args.map(arg => arg.evaluate(namespace, selection));
-  const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
+FuncExpr.prototype.evaluate = function(namespace, selection, length) {
+  const inputs = this.args.map(arg => arg.evaluate(namespace, selection, length));
   const that = this;
   const data = selection.reduce(function(data, selid) {
       data[selid] = that.func.apply(that.func, inputs.map(column => column.data[selid]));
       return data;
     },
-    new Array(count).fill(null)
+    new Array(length).fill(null)
   );
 
 
@@ -91,10 +90,10 @@ class RefExpr extends Expr {
   }
 
   alias() {
-    return this.reference;
+    return '"' + this.reference + '"';
   }
 
-  evaluate(namespace, selection) {
+  evaluate(namespace, selection, length) {
     const result = namespace[this.reference];
     if (!result) {
       throw new ReferenceError("Unknown column: " + this.reference);
@@ -118,30 +117,97 @@ class ConstExpr extends Expr {
   alias() {
     return String(this.constant);
   }
+
+  evaluate(namespace, selection, length) {
+ 		return new Column(this.datatype, Array(length).fill(this.constant));
+ 	}
 }
 
 /**
- * Evaluate a constant expression
+ * A class for handling case statements with short circuiting
  *
- * @param namespace - A mapping from names to Columns
- * @returns {Column} - A column containing the constants.
+ * @param {Array} args - The input expressions for the function call.
+ * @param {Function} expr - The optional case value expression.
  */
-ConstExpr.prototype.evaluate = function(namespace, selection) {
- const count = Object.keys(namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
- const that = this;
- return new Column(this.datatype, Array(count).fill(that.constant));
-};
+class CaseExpr extends Expr {
+	constructor(args, expr) {
+		super('case');
+		this.expr = expr;
+		this.args = args;
+		// Add a missing else clause
+		if (args.length % 2 == 0) {
+			this.args.push(new ConstExpr(null));
+		}
+	}
+
+	alias() {
+		var result = 'case';
+		if (this.expr) {
+			result += ' ' + this.expr.alias();
+		}
+		var a = 0;
+		while (a < this.args.length - 1) {
+			result += ' when ' + this.args[a++].alias();
+			result += ' then ' + this.args[a++].alias();
+		}
+		result += ' else ' + this.args[a++].alias() + ' end';
+
+		return result;
+	}
+
+	evaluate(namespace, selection, length) {
+ 		const result = new Column(this.args[1].datatype, Array(length).fill(null));
+
+		// Use constant true for a missing expression.
+		const expr = this.expr || new ConstExpr(true);
+		const keys = expr.evaluate(namespace, selection, length);
+
+		var remaining = selection.length;
+		var passing = Array(remaining).fill(null);
+		var a = 0;
+		while (a < this.args.length - 1) {
+			const whens = this.args[a++].evaluate(namespace, selection, length);
+
+			var failing = Array(remaining).fill(null);
+			var passed = 0;
+			var failed = 0;
+			selection.forEach(function(selidx) {
+				const key = keys.data[selidx];
+				if (whens.data[selidx] == key && key != null) {
+					passing[passed++] = selidx;
+				} else {
+					failing[failed++] = selidx;
+				}
+			});
+
+			const thens = this.args[a++].evaluate(namespace, passing, length);
+			passing.forEach(selidx => (result.data[selidx] = thens.data[selidx]));
+
+			remaining = failed;
+			selection = failing;
+		}
+
+		const elses = this.args[a++].evaluate(namespace, selection, length);
+		for (var i = 0; i < remaining; ++i) {
+			const selidx = selection[i];
+			result.data[selidx] = elses.data[selidx];
+		}
+
+		return result;
+	}
+}
+
 
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Expr, FuncExpr, ConstExpr, RefExpr
+    Expr, FuncExpr, ConstExpr, RefExpr, CaseExpr
   }
 };
 
 /**
  *	The Scalar Expression library.
  *
- * This is a convenient palce to put functions that get used a lot.
+ * This is a convenient place to put functions that get used a lot.
  */
 
 /**

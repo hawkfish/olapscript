@@ -87,10 +87,15 @@ class Table {
     this.ordinals = ordinals || [];
 
     this.selection = selection || this.namespace[this.ordinals[0]].data.map((v, rowid) => rowid);
+  	this.length = Object.keys(this.namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
   }
 
   getRowCount() {
     return this.selection.length;
+  }
+
+  getDataLength() {
+    return this.length;
   }
 }
 
@@ -372,7 +377,7 @@ Table.prototype.select = function(expressions) {
   const that = this;
   expressions.forEach(function(expr) {
     ordinals.push(expr.as);
-    namespace[expr.as] = expr.expr.evaluate(that.namespace, that.selection);
+    namespace[expr.as] = expr.expr.evaluate(that.namespace, that.selection, that.length);
   });
 
   return new Table(namespace, ordinals, this.selection, this);
@@ -393,7 +398,7 @@ Table.prototype.where = function(predicate) {
   predicate = Table.normalise(predicate);
 
   const that = this;
-  const matches = predicate.evaluate(this.namespace, this.selection).data;
+  const matches = predicate.evaluate(this.namespace, this.selection, this.length).data;
   const selection = this.selection.reduce(function(selection, rowid) {
       if (matches[rowid]) {
         selection.push(rowid);
@@ -506,7 +511,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   buildImports.forEach(name => namespace[name] = buildNamespace[name]);
 
   // Build keys => expr
-  const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection));
+  const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
   const buildMatches = {};
   const ht = build.selection.reduce(function (ht, val, buildID) {
     const key = JSON.stringify(buildKeys.map(result => result.data[buildID]));
@@ -520,7 +525,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   }, new Map());
 
   // Probe the hash table and emit the new values
-  const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection));
+  const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection, probe.length));
   const probeMatches = {}
   probe.selection.forEach(function (val, probeID) {
     const key = JSON.stringify(probeKeys.map(result => result.data[probeID]));
@@ -628,10 +633,10 @@ Table.prototype.groupby = function(groups, aggrs) {
   {});
 
   // Evaluate the grouping keys
-  const groupbys = groups.map(group => group.expr.evaluate(that.namespace, that.selection));
+  const groupbys = groups.map(group => group.expr.evaluate(that.namespace, that.selection, that.length));
 
   // Evaluate the aggregate input expressions
-  const inputs = aggrs.map(aggr => aggr.args.map(arg => arg.evaluate(that.namespace, that.selection)));
+  const inputs = aggrs.map(aggr => aggr.args.map(arg => arg.evaluate(that.namespace, that.selection, that.length)));
 
   // Evaluate the aggregates using a hash table
   const ht = this.selection.reduce(function(ht, selid, rowid) {
@@ -694,7 +699,7 @@ Table.prototype.orderby = function(orders) {
   }
 
   const that = this;
-  const ordercols = orders.map(order => order.expr.evaluate(this.namespace, selection));
+  const ordercols = orders.map(order => order.expr.evaluate(that.namespace, selection, that.length));
   selection.sort(function(lidx, ridx) {
     return orders.reduce(function (cmp, order, colidx) {
       if (cmp) {
