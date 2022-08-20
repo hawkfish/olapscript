@@ -142,7 +142,12 @@ if (typeof module !== 'undefined') {
 /**
  *	The Scalar Expression library.
  *
- * Any scalar functions should go here - especially if some component wants to reason about a tree.
+ * This is a convenient palce to put functions that get used a lot.
+ */
+
+/**
+ * A utility wrapper that returns null if an of the arguments are null.
+ * The first argument is taken to be the function to evaluate.
  */
 Expr.nullWrapper_ = function(...args) {
 	const f = args.shift();
@@ -150,6 +155,30 @@ Expr.nullWrapper_ = function(...args) {
 		return null;
 	}
 	return f.apply(f, args);
+}
+
+/**
+ *	AND, OR, NOT
+ *
+ * Since Javascript doesn't expose these as function objects,
+ * we have them in the library for potentially reasoning about expression trees.
+ */
+Expr.and = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result && arg), true);
+}
+
+Expr.or = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result || arg), false);
+}
+
+Expr.not = function(b) {
+	return (b == null) ? null : !b;
 }
 
 /**
