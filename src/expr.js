@@ -90,13 +90,17 @@ class RefExpr extends Expr {
   }
 
   alias() {
-    return '"' + this.reference + '"';
+  	if (this.reference.includes(' ')) {
+    	return '"' + this.reference + '"';
+    } else {
+    	return this.reference;
+    }
   }
 
   evaluate(namespace, selection, length) {
     const result = namespace[this.reference];
     if (!result) {
-      throw new ReferenceError("Unknown column: " + this.reference);
+      throw new ReferenceError("Unknown column: " + this.alias());
     }
     return result;
   }
