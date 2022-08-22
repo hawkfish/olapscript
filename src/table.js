@@ -588,6 +588,9 @@ Table.normaliseAggr = function(aggr) {
     aggr = {func: aggr};
   }
   aggr.args = aggr.args || [];
+  if (!Array.isArray(aggr.args)) {
+  	aggr.args = [aggr.args];
+  }
   aggr.args = aggr.args.map(arg => Table.normaliseExpr(arg));
 
   aggr.as = aggr.as || aggr.func.name;
@@ -647,7 +650,7 @@ Table.prototype.groupby = function(groups, aggrs) {
       ht.set(key, {group: selid, states: aggrs.map(aggr => new aggr.func())});
     }
     const entry = ht.get(key);
-    entry.states.forEach((state, a) => state.update.apply(state, inputs[a]));
+    entry.states.forEach((state, a) => state.update.apply(state, inputs[a].map(col => col.data[selid])));
     return ht;
   },
   new Map()
@@ -662,6 +665,7 @@ Table.prototype.groupby = function(groups, aggrs) {
 
   return new Table(namespace, ordinals, undefined, this);
 }
+Table.prototype.groupBy = Table.prototype.groupby;
 
 /**
  * Make it easier to write ORDER BY expressions
