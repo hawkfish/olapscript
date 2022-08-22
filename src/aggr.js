@@ -142,8 +142,137 @@ class Avg extends Sum {
   }
 }
 
+/**
+ * A utility aggregate that tracks a single value, initially NULL.
+ *
+ */
+class ValueAggr extends Aggr {
+	constructor(selector, args, options) {
+		super(args, options);
+		this.selector = selector;
+	}
+
+	initialize() {
+		return Object.assign(super.initialize(), {value: null});
+	}
+
+	update(state, val) {
+		super.update(state, val);
+		if (val !== null) {
+			if (state.value !== null) {
+				state.value = this.selector(state.value, val);
+			} else {
+				state.value = val;
+			}
+		}
+	}
+
+  finalize(state) {
+  	return state.value;
+  }
+}
+
+/**
+ * MIN
+ *
+ * @param {Any} value
+ * @returns {Any} The smallest non-null value
+ *
+ */
+class Min extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => ((a < b) ? a : b), args, options);
+	}
+};
+
+/**
+ * MAX
+ *
+ * @param {Any} value
+ * @returns {Any} The smallest non-null value
+ *
+ */
+class Max extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => ((a > b) ? a : b), args, options);
+	}
+};
+
+/**
+ * First
+ *
+ * @param {Any} value
+ * @returns {Any} The first non-null value
+ *
+ */
+class First extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => a, args, options);
+	}
+};
+
+/**
+ * Last
+ *
+ * @param {Any} value
+ * @returns {Any} The last non-null value
+ *
+ */
+class Last extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => b, args, options);
+	}
+};
+
+/**
+ * ArrayAgg
+ *
+ * @param {Any} value -
+ * @returns {Array} The array consisting of all the values in order
+ *
+ */
+class ArrayAgg extends Aggr {
+	initialize() {
+		return Object.assign(super.initialize(), {value: null});
+	}
+
+	update(state, val) {
+		if (state.value == null) {
+			state.value = [];
+		}
+		state.value.push(val);
+	}
+
+  finalize(state) {
+  	return state.value;
+  }
+};
+
+/**
+ * StringAgg
+ *
+ * @param {String} value -
+ * @param {String} sep - The separator (must be constant)
+ * @returns {String} The strings separated by the separator
+ *
+ */
+class StringAgg extends ValueAggr {
+	constructor(args, options) {
+		//	Extract the separator
+		const arg2 = args[1] || {constant: ','};
+		const sep = arg2.constant || ',';
+
+		//	Only pass on the first argument
+		super((a, b) => (a + sep + b), [args[0]], options);
+		this.sep = sep;
+	}
+};
+
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count, Sum, Avg
+    Aggr, CountStar, Count,
+    Sum, Avg,
+    Min, Max, First, Last,
+    StringAgg, ArrayAgg
   };
 };
