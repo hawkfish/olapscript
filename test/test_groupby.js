@@ -37,7 +37,7 @@ describe('Table', function() {
     it('should count duplicates from one column', function() {
     	const actual = Table
     		.fromRows(bedrock)
-    		.groupBy([{expr: new RefExpr("last"), as: "family"}], [{func: CountStar, as: "count"}]);
+    		.groupBy([{expr: new RefExpr("last"), as: "family"}], [{func: new CountStar, as: "count"}]);
     	expect(actual.ordinals).to.deep.equal(["family", "count"]);
     	expect(actual.namespace).to.have.keys(actual.ordinals);
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
@@ -46,7 +46,7 @@ describe('Table', function() {
     it('should normalise single aggregates', function() {
     	const actual = Table
     		.fromRows(bedrock)
-    		.groupBy([{expr: new RefExpr("last"), as: "family"}], {func: CountStar, as: "count"});
+    		.groupBy([{expr: new RefExpr("last"), as: "family"}], {func: new CountStar, as: "count"});
     	expect(actual.ordinals).to.deep.equal(["family", "count"]);
     	expect(actual.namespace).to.have.keys(actual.ordinals);
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
@@ -55,7 +55,7 @@ describe('Table', function() {
     it('should normalise anonymous aggregates', function() {
     	const actual = Table
     		.fromRows(bedrock)
-    		.groupBy([{expr: new RefExpr("last"), as: "family"}], CountStar);
+    		.groupBy([{expr: new RefExpr("last"), as: "family"}], new CountStar);
     	expect(actual.ordinals).to.deep.equal(["family", "CountStar"]);
     	expect(actual.namespace).to.have.keys(actual.ordinals);
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
@@ -64,7 +64,7 @@ describe('Table', function() {
     it('should compute aggregates with inputs', function() {
     	const actual = Table
     		.fromRows(bedrock)
-    		.groupBy([{expr: new RefExpr("last"), as: "family"}], {func: Avg, args: new RefExpr("age")});
+    		.groupBy([{expr: new RefExpr("last"), as: "family"}], {func: new Avg(new RefExpr("age"))});
     	expect(actual.ordinals).to.deep.equal(["family", "Avg"]);
     	expect(actual.namespace).to.have.keys(actual.ordinals);
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);

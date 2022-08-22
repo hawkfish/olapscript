@@ -20,21 +20,56 @@
  */
 
 /**
+ * A base class for aggregates.
+ * It defines all the basic operations common to all aggregates.
+ *
+ * Members:
+ *	{Array} args - The function arguments.
+ *  {Object} - config - A set pf configuration properties
+ *
+ */
+class Aggr {
+	constructor(args, options) {
+		args = args || [];
+		if (!Array.isArray(args)) {
+			args = [args];
+		}
+		this.args = args;
+		this.options = options || {};
+	}
+
+	initialize() {
+		return {};
+	}
+
+	update(state, value) {
+	}
+
+	finalize(state) {
+		return null;
+	}
+};
+
+/**
  * The COUNTSTAR aggregate function.
  * This also works as a single value state base class
  *
  */
-class CountStar {
-  constructor() {
-    this.count = 0;
+class CountStar extends Aggr {
+  constructor(options) {
+  	super([], options);
   }
 
-  update() {
-    ++this.count;
+	initialize() {
+		return Object.assign(super.initialize(), {count: 0});
+	}
+
+  update(state) {
+    ++state.count;
   }
 
-  finalize() {
-    return this.count;
+  finalize(state) {
+    return state.count;
   }
 };
 
@@ -42,9 +77,17 @@ class CountStar {
  * The COUNT aggregate function
  *
  */
-class Count extends CountStar {
-  update(val) {
-    this.count += (val !== null);
+class Count extends Aggr {
+	initialize() {
+		return Object.assign(super.initialize(), {count: 0});
+	}
+
+  update(state, val) {
+    state.count += (val !== null);
+  }
+
+  finalize(state) {
+    return state.count;
   }
 };
 
@@ -52,25 +95,27 @@ class Count extends CountStar {
  * The SUM aggregate function
  *
  */
-class Sum extends Count {
-  constructor() {
-    super();
-    this.sum = null;
+class Sum extends Aggr {
+  constructor(args, options) {
+    super(args, options);
   }
-  
-  update(val) {
-    super.update(val);
+
+	initialize() {
+		return Object.assign(super.initialize(), {sum: null});
+	}
+
+  update(state, val) {
     if (val !== null) {
-      if (this.sum == null) {
-        this.sum = val;
+      if (state.sum == null) {
+        state.sum = val;
       } else {
-        this.sum += val;
+        state.sum += val;
       }
     }
   }
-  
-  finalize() {
-    return this.sum;
+
+  finalize(state) {
+    return state.sum;
   }
 };
 
@@ -79,9 +124,18 @@ class Sum extends Count {
  *
  */
 class Avg extends Sum {
-  finalize() {
-    if (this.count) {
-      return super.finalize() / this.count;
+	initialize() {
+		return Object.assign(super.initialize(), {count: 0});
+	}
+
+	update(state, val) {
+		super.update(state, val);
+    state.count += (val !== null);
+	}
+
+  finalize(state) {
+    if (state.count) {
+      return super.finalize(state) / state.count;
     } else {
       return null;
     }
@@ -90,6 +144,6 @@ class Avg extends Sum {
 
 if (typeof module !== 'undefined') {
   module.exports  = {
-    CountStar, Count, Sum, Avg
+    Aggr, CountStar, Count, Sum, Avg
   };
 };
