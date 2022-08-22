@@ -142,8 +142,90 @@ class Avg extends Sum {
   }
 }
 
+/**
+ * A utility aggregate that tracks a single value, initially NULL.
+ *
+ */
+class ValueAggr extends Aggr {
+	constructor(selector, args, options) {
+		super(args, options);
+		this.selector = selector;
+	}
+
+	initialize() {
+		return Object.assign(super.initialize(), {value: null});
+	}
+
+	update(state, val) {
+		super.update(state, val);
+		if (val !== null) {
+			if (state.value !== null) {
+				state.value = this.selector(state.value, val);
+			} else {
+				state.value = val;
+			}
+		}
+	}
+
+  finalize(state) {
+  	return state.value;
+  }
+}
+
+/**
+ * MIN
+ *
+ * @param {Any} value
+ * @returns {Any} The smallest non-null value
+ *
+ */
+class Min extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => ((a < b) ? a : b), args, options);
+	}
+};
+
+/**
+ * MAX
+ *
+ * @param {Any} value
+ * @returns {Any} The smallest non-null value
+ *
+ */
+class Max extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => ((a > b) ? a : b), args, options);
+	}
+};
+
+/**
+ * FIRST
+ *
+ * @param {Any} value
+ * @returns {Any} The first non-null value
+ *
+ */
+class First extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => a, args, options);
+	}
+};
+
+/**
+ * LAST
+ *
+ * @param {Any} value
+ * @returns {Any} The last non-null value
+ *
+ */
+class Last extends ValueAggr {
+	constructor(args, options) {
+		super((a,b) => b, args, options);
+	}
+};
+
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count, Sum, Avg
+    Aggr, CountStar, Count, Sum, Avg, Min, Max, First, Last
   };
 };
