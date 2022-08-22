@@ -3,6 +3,21 @@ const expr = require('../src/expr');
 const Expr = expr.Expr;
 
 describe('String functions', function() {
+	describe('CONTAINS', function() {
+		const target = 'Twas brillig and the slithy toves';
+		it('should return true if the search is in the target', function() {
+				expect(Expr.contains(target, 'slithy')).to.be.true;
+		});
+		it('should return false if the search is not in the target', function() {
+				expect(Expr.contains(target, 'gyre')).to.be.false;
+		});
+		it('should return null for any null argument', function() {
+				expect(Expr.contains(target, null)).to.be.null;
+				expect(Expr.contains(null, 'wabe')).to.be.null;
+				expect(Expr.contains(null, null)).to.be.null;
+		});
+	});
+
 	describe('LTRIM', function() {
 		it('should trim only the left side of a string', function() {
 				expect(Expr.ltrim(' Both  ')).to.equal('Both  ');

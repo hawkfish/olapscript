@@ -345,6 +345,19 @@ Expr.rtrim = function(untrimmed) {
 }
 
 /**
+ * CONTAINS
+ *
+ * Tests whether a string contains a substring.
+ *
+ * @param {String} target - The string to search
+ * @param {String} query - The string to search for
+ * @returns {Boolean}
+ */
+Expr.contains = function(target, query) {
+	return Expr.nullWrapper_((target, query) => target.includes(query), target, query);
+};
+
+/**
  * NOW and TODAY
  *
  * Note that SQL uses UTC unless time zone support is in use.
