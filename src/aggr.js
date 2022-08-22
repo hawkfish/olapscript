@@ -199,7 +199,7 @@ class Max extends ValueAggr {
 };
 
 /**
- * FIRST
+ * First
  *
  * @param {Any} value
  * @returns {Any} The first non-null value
@@ -212,7 +212,7 @@ class First extends ValueAggr {
 };
 
 /**
- * LAST
+ * Last
  *
  * @param {Any} value
  * @returns {Any} The last non-null value
@@ -224,8 +224,31 @@ class Last extends ValueAggr {
 	}
 };
 
+/**
+ * StringAgg
+ *
+ * @param {String} value -
+ * @param {String} sep - The separator (must be constant)
+ * @returns {String} The string separated
+ *
+ */
+class StringAgg extends ValueAggr {
+	constructor(args, options) {
+		//	Extract the separator
+		const arg2 = args[1] || {constant: ','};
+		const sep = arg2.constant || ',';
+
+		//	Only pass on the first argument
+		super((a, b) => (a + sep + b), [args[0]], options);
+		this.sep = sep;
+	}
+};
+
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count, Sum, Avg, Min, Max, First, Last
+    Aggr, CountStar, Count,
+    Sum, Avg,
+    Min, Max, First, Last,
+    StringAgg//, ArrayAgg
   };
 };

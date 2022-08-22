@@ -762,4 +762,107 @@ describe('Aggr', function() {
       });
     });
   });
+
+  describe('StringAgg', function() {
+    const StringAgg = aggr.StringAgg;
+    describe('constructor', function() {
+      it('should store the arguments and options', function() {
+        const args = ["arg", new ConstExpr("sep")];
+        const options = {option: 1};
+        const e = new StringAgg(args, options);
+        expect(e.args).to.deep.equal([args[0]]);
+        expect(e.options).deep.equal(options);
+        expect(e.sep).to.equal("sep");
+      });
+    });
+    describe('initialize', function() {
+      it('should create an empty state', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        expect(state.value).to.be.null;
+      });
+    });
+    describe('update', function() {
+      it('should ignore a null value', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, null);
+        expect(state.value).to.be.null;
+      });
+      it('should keep the first value', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        expect(state.value).to.equal("a");
+      });
+      it('should ignore subsequent nulls', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, null);
+        expect(state.value).to.equal("a");
+      });
+      it('should concatenate new values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, "c");
+        e.update(state, "b");
+        expect(state.value).to.equal("a,c,b");
+      });
+      it('should concatenate increasing values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(i)));
+        expect(state.value).to.equal("0,1,2,3,4,5,6,7,8,9");
+      });
+      it('should concatenate decreasing values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(9 - i)));
+        expect(state.value).to.equal('9,8,7,6,5,4,3,2,1,0');
+      });
+    });
+    describe('finalize', function() {
+      it('should ignore a null value', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, null);
+        expect(e.finalize(state)).to.be.null;
+      });
+      it('should keep the first value', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, 5);
+        expect(e.finalize(state)).to.equal(5);
+      });
+      it('should ignore subsequent nulls', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, 5);
+        e.update(state, null);
+        expect(e.finalize(state)).to.equal(5);
+      });
+      it('should concatenate new values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, "c");
+        e.update(state, "b");
+        expect(state.value).to.equal("a,c,b");
+      });
+      it('should concatenate increasing values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(i)));
+        expect(e.finalize(state)).to.equal("0,1,2,3,4,5,6,7,8,9");
+      });
+      it('should concatenate decreasing values', function() {
+        const e = new StringAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(9 - i)));
+        expect(e.finalize(state)).to.equal('9,8,7,6,5,4,3,2,1,0');
+      });
+    });
+  });
 });
