@@ -593,7 +593,7 @@ Table.normaliseAggr = function(aggr) {
   }
   aggr.args = aggr.args.map(arg => Table.normaliseExpr(arg));
 
-  aggr.as = aggr.as || aggr.func.name;
+  aggr.as = aggr.as || aggr.func.constructor.name;
 
   return aggr;
 }
@@ -639,7 +639,9 @@ Table.prototype.groupby = function(groups, aggrs) {
   const groupbys = groups.map(group => group.expr.evaluate(that.namespace, that.selection, that.length));
 
   // Evaluate the aggregate input expressions
-  const inputs = aggrs.map(aggr => aggr.args.map(arg => arg.evaluate(that.namespace, that.selection, that.length)));
+  const inputs = aggrs.map(aggr =>
+  	aggr.func.args.map(arg =>
+  		arg.evaluate(that.namespace, that.selection, that.length)));
 
   // Evaluate the aggregates using a hash table
   const ht = this.selection.reduce(function(ht, selid, rowid) {
@@ -647,10 +649,15 @@ Table.prototype.groupby = function(groups, aggrs) {
 
     const key = JSON.stringify(values);
     if (!ht.has(key)) {
-      ht.set(key, {group: selid, states: aggrs.map(aggr => new aggr.func())});
+      ht.set(key, {group: selid, states: aggrs.map(aggr => aggr.func.initialize())});
     }
     const entry = ht.get(key);
-    entry.states.forEach((state, a) => state.update.apply(state, inputs[a].map(col => col.data[selid])));
+    entry.states.forEach(function(state, a) {
+    	const func = aggrs[a].func;
+    	const row = [state].concat(inputs[a].map(col => col.data[selid]));
+    	func.update.apply(func, row);
+    });
+
     return ht;
   },
   new Map()
@@ -660,7 +667,7 @@ Table.prototype.groupby = function(groups, aggrs) {
   ht.forEach(function(entry) {
     //  Copy the group values from the rowid
     groups.forEach((group, g) => namespace[group.as].data.push(groupbys[g].data[entry.group]));
-    aggrs.forEach((aggr, a) => namespace[aggr.as].data.push(entry.states[a].finalize()));
+    aggrs.forEach((aggr, a) => namespace[aggr.as].data.push(aggr.func.finalize(entry.states[a])));
   });
 
   return new Table(namespace, ordinals, undefined, this);
