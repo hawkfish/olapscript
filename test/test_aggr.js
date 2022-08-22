@@ -763,6 +763,108 @@ describe('Aggr', function() {
     });
   });
 
+  describe('ArrayAgg', function() {
+    const ArrayAgg = aggr.ArrayAgg;
+    describe('constructor', function() {
+      it('should store the arguments and options', function() {
+        const arg = "arg";
+        const options = {option: 1};
+        const e = new ArrayAgg(arg, options);
+        expect(e.args).to.deep.equal([arg]);
+        expect(e.options).deep.equal(options);
+      });
+    });
+    describe('initialize', function() {
+      it('should create an empty state', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        expect(state.value).to.be.null;
+      });
+    });
+    describe('update', function() {
+      it('should ignore a null value', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, null);
+        expect(state.value).deep.equal([ null ]);
+      });
+      it('should keep the first value', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        expect(state.value).deep.equal([ 'a' ]);
+      });
+      it('should ignore subsequent nulls', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, null);
+        expect(state.value).deep.equal([ 'a', null ]);
+      });
+      it('should concatenate new values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, null);
+        e.update(state, "b");
+        expect(state.value).deep.equal([ 'a', null, 'b' ]);
+      });
+      it('should concatenate increasing values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(i)));
+        expect(state.value).to.deep.equal([ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]);
+      });
+      it('should concatenate decreasing values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(9 - i)));
+        expect(state.value).to.deep.equal([ '9', '8', '7', '6', '5', '4', '3', '2', '1', '0' ]);
+      });
+    });
+    describe('finalize', function() {
+      it('should ignore a null value', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, null);
+        expect(e.finalize(state)).to.deep.equal([null]);
+      });
+      it('should keep the first value', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, 5);
+        expect(e.finalize(state)).to.deep.equal([5]);
+      });
+      it('should keep subsequent nulls', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, 5);
+        e.update(state, null);
+        expect(e.finalize(state)).to.deep.equal([5, null]);
+      });
+      it('should concatenate new values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        e.update(state, "a");
+        e.update(state, null);
+        e.update(state, "b");
+        expect(state.value).to.deep.equal([ 'a', null, 'b' ]);
+      });
+      it('should concatenate increasing values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(i)));
+        expect(e.finalize(state)).to.deep.equal([ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]);
+      });
+      it('should concatenate decreasing values', function() {
+        const e = new ArrayAgg([]);
+        const state = e.initialize();
+        Array(10).fill(null).forEach((v, i) => e.update(state, String(9 - i)));
+        expect(e.finalize(state)).to.deep.equal([ '9', '8', '7', '6', '5', '4', '3', '2', '1', '0' ]);
+      });
+    });
+  });
+
   describe('StringAgg', function() {
     const StringAgg = aggr.StringAgg;
     describe('constructor', function() {

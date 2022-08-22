@@ -225,11 +225,35 @@ class Last extends ValueAggr {
 };
 
 /**
+ * ArrayAgg
+ *
+ * @param {Any} value -
+ * @returns {Array} The array consisting of all the values in order
+ *
+ */
+class ArrayAgg extends Aggr {
+	initialize() {
+		return Object.assign(super.initialize(), {value: null});
+	}
+
+	update(state, val) {
+		if (state.value == null) {
+			state.value = [];
+		}
+		state.value.push(val);
+	}
+
+  finalize(state) {
+  	return state.value;
+  }
+};
+
+/**
  * StringAgg
  *
  * @param {String} value -
  * @param {String} sep - The separator (must be constant)
- * @returns {String} The string separated
+ * @returns {String} The strings separated by the separator
  *
  */
 class StringAgg extends ValueAggr {
@@ -249,6 +273,6 @@ if (typeof module !== 'undefined') {
     Aggr, CountStar, Count,
     Sum, Avg,
     Min, Max, First, Last,
-    StringAgg//, ArrayAgg
+    StringAgg, ArrayAgg
   };
 };
