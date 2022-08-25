@@ -375,10 +375,12 @@ Table.prototype.select = function(expressions) {
   const namespace = {};
   const ordinals = [];
   const that = this;
-  expressions.forEach(function(expr) {
-    ordinals.push(expr.as);
-    namespace[expr.as] = expr.expr.evaluate(that.namespace, that.selection, that.length);
-  });
+  expressions
+  	.map(expr => Table.normaliseBinding(expr))
+  	.forEach(function(expr) {
+			ordinals.push(expr.as);
+			namespace[expr.as] = expr.expr.evaluate(that.namespace, that.selection, that.length);
+		});
 
   return new Table(namespace, ordinals, this.selection, this);
 }
