@@ -37,15 +37,15 @@ describe('Table', function() {
       });
     });
     it('should read a limited table', function() {
-      const limit = 5;
-      const actual = Table.fromSheet(new Sheet('Helpers', values), {limit: limit});
+      const options = {limit: 5};
+      const actual = Table.fromSheet(new Sheet('Helpers', values), options);
       expect(actual.ordinals).to.deep.equal(values[0]);
-      expect(actual.getRowCount()).to.equal(limit);
-      expect(actual.selection.length).to.equal(limit);
+      expect(actual.getRowCount()).to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
       actual.selection.forEach((selid, rowid) => expect(selid).to.equal(rowid));
       actual.ordinals.forEach(function(name, colid) {
         const data = actual.namespace[name].data;
-        expect(data.length).to.equal(limit);
+        expect(data.length).to.equal(options.limit);
         actual.selection.forEach(function(selid) {
           expect(data[selid]).to.equal(values[selid+1][colid]);
         });
@@ -72,22 +72,178 @@ describe('Table', function() {
       });
     });
     it('should read a table with conflicting duplicate column names', function() {
-      const dupes = [
+      const contents = [
         ['Name', 'Name 2', 'Age', 'Name'],
         ['Joseph', 'Blow', 27, 'Joe'],
         ['Mary', 'Smith', 32, 'Mary'],
         ['Duplicate', 'Earl', 61, 'Dupe']
       ];
-      const actual = Table.fromSheet(new Sheet('Duplicates', dupes));
+      const actual = Table.fromSheet(new Sheet('Duplicates', contents));
       expect(actual.ordinals).to.deep.equal(['Name', 'Name 2', 'Age', 'Name 3']);
-      expect(actual.getRowCount()).to.equal(dupes.length - 1);
-      expect(actual.selection.length).to.equal(dupes.length - 1);
+      expect(actual.getRowCount()).to.equal(contents.length - 1);
+      expect(actual.selection.length).to.equal(contents.length - 1);
       actual.selection.forEach((selid, rowid) => expect(selid).to.equal(rowid));
       actual.ordinals.forEach(function(name, colid) {
         const data = actual.namespace[name].data;
-        expect(data.length).to.equal(dupes.length - 1);
+        expect(data.length).to.equal(contents.length - 1);
         actual.selection.forEach(function(selid) {
-          expect(data[selid]).to.equal(dupes[selid+1][colid]);
+          expect(data[selid]).to.equal(contents[selid+1][colid]);
+        });
+      });
+    });
+    it('should read a table not at the top left', function() {
+      const contents = [
+        [null, null, null, null, null, null],
+        [null, 'First', 'Last', 'Age', 'Nickname', null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 2,
+      	left: 2,
+      	limit: 3,
+      	width: 4
+      }
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal(['First', 'Last', 'Age', 'Nickname']);
+      expect(actual.getRowCount()).to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+        	// Top will get adjusted because it contains the header
+          expect(data[selid], name).to.equal(contents[options.top + selid][options.left + colid - 1]);
+        });
+      });
+    });
+    it('should read a table with a disjoint header', function() {
+      const contents = [
+        [null, null, null, null, null, null],
+        [null, 'First', 'Last', 'Age', 'Nickname', null],
+        [null, null, null, null, null, null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 4,
+      	left: 2,
+      	limit: 3,
+      	width: 4,
+      	header: 2,
+      	headerCount: 1
+      };
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal(['First', 'Last', 'Age', 'Nickname']);
+      expect(actual.getRowCount(), "Row Count").to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid], name).to.equal(contents[options.top + selid - 1][options.left + colid - 1]);
+        });
+      });
+    });
+    it('should read a table with a no header', function() {
+      const contents = [
+        [null, null, null, null, null, null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 2,
+      	left: 2,
+      	limit: 3,
+      	width: 4,
+      	header: 2,
+      	headerCount: 0
+      };
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal([ 'F1', 'F2', 'F3', 'F4' ]);
+      expect(actual.getRowCount(), "Row Count").to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid], name).to.equal(contents[options.top + selid - 1][options.left + colid - 1]);
+        });
+      });
+    });
+    it('should read a table with custom column names', function() {
+      const contents = [
+        [null, null, null, null, null, null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 2,
+      	left: 2,
+      	limit: 3,
+      	width: 4,
+      	header: 2,
+      	headerCount: 0,
+      	columns: ['First', 'Last', 'Age', 'Nickname']
+      };
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal(options.columns);
+      expect(actual.getRowCount(), "Row Count").to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid], name).to.equal(contents[options.top + selid - 1][options.left + colid - 1]);
+        });
+      });
+    });
+    it('should read a table with a multi-row header', function() {
+      const contents = [
+        [null, null, null, null, null, null],
+        [null, 'First', 'Last', 'Age', 'Nickname', null],
+        [null, 'Name', 'Name', '', '', null],
+        [null, null, null, null, null, null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 5,
+      	left: 2,
+      	limit: 3,
+      	width: 4,
+      	header: 2,
+      	headerCount: 2
+      };
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal(['First Name', 'Last Name', 'Age', 'Nickname']);
+      expect(actual.getRowCount(), "Row Count").to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid], name).to.equal(contents[options.top + selid - 1][options.left + colid - 1]);
         });
       });
     });

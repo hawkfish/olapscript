@@ -161,16 +161,56 @@ Table.prototype.emptyNamespace_ = function() {
  * @returns {Table}
  */
 Table.fromSheet = function(sheet, options_p) {
+  // Set up the table location
   const defaults = {
-    limit: sheet.getLastRow()
+    // The top data cell
+    top: 1,
+    // The left data cell
+    left: 1,
+    // The number of data rows
+    limit: sheet.getLastRow() - 1,
+    // The number of columns
+    width: sheet.getLastColumn(),
+    // The header row (null for first data row being the header)
+    header: null,
+    // The number of header rows
+    headerCount: 1
   };
   const options = Object.assign({}, defaults, options_p || {});
-  const range = sheet.getRange(1, 1, options.limit + 1, sheet.getLastColumn());
-  const values = range.getValues();
+  // Adjust for inclusive header
+  if (!options.header) {
+    options.header = options.top;
+    options.top += options.headerCount;
+  }
+
+  // Extract the header
+  var header = options.columns || Array(options.width).fill(null).map((v, i) => 'F' + (i+1));
+  if (options.headerCount) {
+    const headerRange = sheet.getRange(
+      options.header, options.left,
+      options.header + options.headerCount - 1, options.left + options.width - 1);
+    header = headerRange.getValues().reduce(function(header, row) {
+      return row.reduce(function(header, text, colid) {
+        if (text) {
+          if (header[colid]) {
+            header[colid] += ' ';
+          }
+          header[colid] += text;
+        }
+        return header;
+      }, header);
+    }, Array(options.width).fill(''));
+  }
+
+  // Extract the values
+  const valueRange = sheet.getRange(
+    options.top, options.left,
+    options.top + options.limit - 1, options.left + options.width - 1);
+  const values = valueRange.getValues();
 
   // Create unique column names
-  const unique = values[0].reduce((unique, key) => (unique[key] = 0, unique), {});
-  const ordinals = values[0].map(function(header) {
+  const unique = header.reduce((unique, key) => (unique[key] = 0, unique), {});
+  const ordinals = header.map(function(header) {
     if (!unique[header]) {
       ++unique[header];
       return header;
@@ -187,12 +227,11 @@ Table.fromSheet = function(sheet, options_p) {
 
   const namespace = {}
   // Pivot the data into columns
-  for (var c = 0; c < range.getNumColumns(); ++c) {
+  for (var c = 0; c < valueRange.getNumColumns(); ++c) {
     const data = Array.from(values, row => row[c]);
-    data.shift();
     const name = ordinals[c];
     const type = undefined;
-    const col = new Column(undefined, data);
+    const col = new Column(type, data);
     namespace[name] = col;
   }
   return new Table(namespace, ordinals, undefined, {name: sheet.getName()});
