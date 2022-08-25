@@ -162,10 +162,15 @@ Table.prototype.emptyNamespace_ = function() {
  */
 Table.fromSheet = function(sheet, options_p) {
   const defaults = {
-    limit: sheet.getLastRow()
+    top: 1,
+    left: 1,
+    limit: sheet.getLastRow(),
+    width: sheet.getLastColumn()
   };
   const options = Object.assign({}, defaults, options_p || {});
-  const range = sheet.getRange(1, 1, options.limit + 1, sheet.getLastColumn());
+  const range = sheet.getRange(
+    options.top, options.left,
+    options.top + options.limit, options.left + options.width - 1);
   const values = range.getValues();
 
   // Create unique column names

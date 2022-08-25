@@ -91,6 +91,28 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table not at the top left', function() {
+      const inside = [
+        [null, null, null, null, null, null],
+        [null, 'First', 'Last', 'Age', 'Nickname', null],
+        [null, 'Joseph', 'Blow', 27, 'Joe', null],
+        [null, 'Mary', 'Smith', 32, 'Mary, null'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', null],
+        [null, null, null, null, null, null]
+      ];
+      const options = {
+      	top: 2,
+      	left: 2,
+      	limit: 3,
+      	width: 4
+      }
+      const sheet = new Sheet('Inside', inside);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals).to.deep.equal(['First', 'Last', 'Age', 'Nickname']);
+      expect(actual.getRowCount()).to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+    });
   });
 });
 
