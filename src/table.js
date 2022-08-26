@@ -174,9 +174,35 @@ Table.fromSheet = function(sheet, options_p) {
     // The header row (null for first data row being the header)
     header: null,
     // The number of header rows
-    headerCount: 1
+    headerCount: 1,
+    // The data column numbers (used to determine the valid row range)
+    dataBounds: []
   };
   const options = Object.assign({}, defaults, options_p || {});
+
+  // Detect any data bounds first.
+  if (options.dataBounds.length) {
+    // Find the covering range for the given columns
+    const bounds = options.dataBounds.reduce(function(bounds, colno) {
+        const colRange = sheet.getRange(options.top, colno,
+                                        options.top + options.limit - 1, colno);
+        const values = colRange.getValues();
+        const top = values.findIndex(row => row[0]) + options.top;
+        if (top < options.top) {
+          return bounds;
+        }
+        const limit = values.findLastIndex(row => row[0]) + 1;
+        if (bounds.top) {
+          return {top: Math.min(bounds.top, top), limit: Math.max(bounds.limit, limit)};
+        } else {
+          return {top: top, limit: limit};
+        }
+      }, {top: null, limit: null}
+    );
+    // Update the valid row range.
+    options.top = bounds.top;
+    options.limit = bounds.limit;
+  }
   // Adjust for inclusive header
   if (!options.header) {
     options.header = options.top;
