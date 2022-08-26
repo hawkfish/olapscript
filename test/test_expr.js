@@ -114,15 +114,22 @@ describe('Expression nodes', function() {
 			});
 		});
 		describe('alias', function() {
-			it('should be the reference', function() {
+			it('should be the reference string', function() {
 				const setup = 'Referenced';
 				const e = new RefExpr(setup);
 				expect(e.alias()).to.equal(setup);
 			});
+			it('should be the reference string, including spaces', function() {
+				const setup = 'Referenced Column';
+				const e = new RefExpr(setup);
+				expect(e.alias()).to.equal(setup);
+			});
+		});
+		describe('toString', function() {
 			it('should be the SQL-quoted reference when it contains spaces', function() {
 				const setup = 'Referenced Column';
 				const e = new RefExpr(setup);
-				expect(e.alias()).to.equal('"' + setup + '"');
+				expect(e.toString()).to.equal('"' + setup + '"');
 			});
 		});
 		describe('evaluate', function() {
@@ -230,7 +237,8 @@ describe('Expression nodes', function() {
 				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens"), new RefExpr("elses")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
-				expect(setup.alias()).to.equal('case when whens then thens else elses end');
+				expect(setup.alias()).to.equal('case');
+				expect(setup.toString()).to.equal('case when whens then thens else elses end');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -246,7 +254,8 @@ describe('Expression nodes', function() {
 				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
-				expect(setup.alias()).to.equal('case when whens then thens else null end');
+				expect(setup.alias()).to.equal('case');
+				expect(setup.toString()).to.equal('case when whens then thens else null end');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -269,7 +278,8 @@ describe('Expression nodes', function() {
 				]);
 				expect(setup.args).to.be.an('array').lengthOf(5);
 				expect(setup.expr).to.be.undefined;
-				expect(setup.alias()).to.equal('case when whens1 then thens1 when whens2 then thens2 else elses end');
+				expect(setup.alias()).to.equal('case');
+				expect(setup.toString()).to.equal('case when whens1 then thens1 when whens2 then thens2 else elses end');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -290,7 +300,8 @@ describe('Expression nodes', function() {
 				]);
 				expect(setup.args).to.be.an('array').lengthOf(5);
 				expect(setup.expr).to.be.undefined;
-				expect(setup.alias()).to.equal('case when whens1 then thens1 when whens2 then thens2 else null end');
+				expect(setup.alias()).to.equal('case');
+				expect(setup.toString()).to.equal('case when whens1 then thens1 when whens2 then thens2 else null end');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -315,7 +326,8 @@ describe('Expression nodes', function() {
 				const setup = new CaseExpr([new RefExpr("whens"), thens, new RefExpr("elses")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
-				expect(setup.alias()).to.equal('case when whens then (rowid) else elses end');
+				expect(setup.alias()).to.equal('case');
+				expect(setup.toString()).to.equal('case when whens then (rowid) else elses end');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
