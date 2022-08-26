@@ -105,5 +105,20 @@ describe('Table', function() {
         })
       ));
     });
+    it('should allow left and right as aliases for probe and build', function() {
+      const condition = {right: new RefExpr("pk"), left: new RefExpr("fk")};
+      const build = Table.fromRows(dim_rows);
+      const probe = Table.fromRows(fact_rows);
+      const joined = probe.equiJoin(build, condition);
+      expect(joined.getRowCount()).to.equal(5);
+      probe.ordinals.forEach(name =>
+        (joined.selection.forEach((selid) =>
+          expect(joined.namespace[name].data[selid], name).to.equal(fact_rows[selid][name]))));
+      build.ordinals.forEach(name =>
+        (joined.selection.forEach(function (selid) {
+          const pk = joined.namespace.pk.data[selid];
+          expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
+        })));
+    });
   });
 });

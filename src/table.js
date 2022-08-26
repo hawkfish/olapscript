@@ -527,6 +527,9 @@ Table.prototype.unionAll = function(second, options_p) {
  *
  * Defined options are:
  *  type - "inner" (default), "left", "right", "full"
+ *
+ * The key expressions may also use left and right instead of probe and build (resp.)
+ * for readability.
  */
 Table.prototype.equiJoin = function(build, keys, options_p) {
   // Normalise the options
@@ -538,7 +541,10 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   if (!Array.isArray(keys)) {
     keys = [keys,];
   };
-  keys = keys.map(pair => ({build: Table.normaliseExpr(pair.build), probe: Table.normaliseExpr(pair.probe)}));
+  keys = keys.map(pair => ({
+    build: Table.normaliseExpr(pair.build || pair.right),
+    probe: Table.normaliseExpr(pair.probe || pair.left)
+  }));
   const probe = this;
 
   // Sort out the output schema
