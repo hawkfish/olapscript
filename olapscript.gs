@@ -922,6 +922,34 @@ Table.prototype.emptyNamespace_ = function() {
 }
 
 /**
+ * Utility function from ES6
+ */
+function findLastIndex(array, predicate) {
+	const len = array.length
+
+	if (!predicate.call) {
+		throw new TypeError('predicate must be a function');
+	}
+
+	var thisArg;
+	if (arguments.length > 1) {
+		thisArg = arguments[1];
+	}
+
+	var k = len - 1;
+	while (k >= 0) {
+		var kValue = array[k]
+		var testResult = predicate.call(thisArg, [kValue, k, this]);
+		if (testResult) {
+			return k;
+		}
+		k -= 1;
+	}
+
+	return -1;
+};
+
+/**
  * Create a Table from a given sheet.
  *
  * @param {Sheet} sheet
@@ -959,7 +987,7 @@ Table.fromSheet = function(sheet, options_p) {
         if (top < options.top) {
           return bounds;
         }
-        const limit = values.findLastIndex(row => row[0]) + 1;
+        const limit = findLastIndex(values, (row => row[0])) + 1;
         if (bounds.top) {
           return {top: Math.min(bounds.top, top), limit: Math.max(bounds.limit, limit)};
         } else {
