@@ -1,0 +1,24 @@
+name: 
+  Build Main
+
+on:
+  push:
+    branches:
+      - amalgamate
+
+jobs:
+  build-and-test:
+    runs-on: 
+      ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: npm install, and test
+        run: |
+          npm install
+          npm test
+      - name: Amalgamate olapscript.gs
+        run: |
+          cat src/columns.js src/expr.js src/aggr.js src/table.js > olapscript.gs
+          git add olapscript.gs
+          git commit -m "Release olapscript.gs"
