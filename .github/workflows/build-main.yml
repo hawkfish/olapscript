@@ -20,5 +20,7 @@ jobs:
       - name: Amalgamate olapscript.gs
         run: |
           cat src/column.js src/expr.js src/aggr.js src/table.js > olapscript.gs
+          git config --global user.email "olapscript@electricfish.com"
+          git config --global user.name "Richard Wesley"
           git add olapscript.gs
           git commit -m "Release olapscript.gs"
