@@ -24,3 +24,4 @@ jobs:
           git config --global user.name "Richard Wesley"
           git add olapscript.gs
           git commit -m "Release olapscript.gs"
+          git push origin main
