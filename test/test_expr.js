@@ -131,11 +131,22 @@ describe('Expression nodes', function() {
 				const actual = e.evaluate(namespace, selection);
 				expect(actual).to.equal(namespace.column);
 			});
-		});
-		describe('evaluate', function() {
 			it('should throw for unknown columns', function() {
 				const e = new RefExpr('fnord');
 				expect(e.evaluate.bind(e, namespace, selection)).to.throw(ReferenceError);
+			});
+			it('should suggest possible misspellings', function() {
+				const ns = {
+					fjord: null,
+					ford: null,
+					bored: null,
+					cord: null,
+					name: null,
+					address: null,
+					email: null
+				}
+				const e = new RefExpr('fnord');
+				expect(e.evaluate.bind(e, ns, selection)).to.throw("fjord");
 			});
 		});
 	});
