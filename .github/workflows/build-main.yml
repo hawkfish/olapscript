@@ -19,6 +19,8 @@ jobs:
           npm test
       - name: Amalgamate olapscript.gs
         run: |
+          ls ${{ github.workspace }}/src
+          ls src
           cat src/columns.js src/expr.js src/aggr.js src/table.js > olapscript.gs
           git add olapscript.gs
           git commit -m "Release olapscript.gs"
