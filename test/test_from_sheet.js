@@ -247,6 +247,37 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table with data range columns ', function() {
+      const contents = [
+        [null, null, null, null, null, 'checkbox'],
+        [null, 'First', 'Last', 'Age', 'Nickname', 'checkbox'],
+        [null, 'Joseph', 'Blow', 27, 'Joe', 'checkbox'],
+        [null, 'Mary', 'Smith', 32, 'Mary', 'checkbox'],
+        [null, 'Duplicate', 'Earl', 61, 'Dupe', 'checkbox'],
+        [null, null, null, 47, null, 'checkbox']
+      ];
+      const options = {
+      	top: 2,
+      	left: 2,
+      	limit: 4,
+      	width: 5,
+      	dataBounds: [2, 3, 5]
+      }
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet, options);
+      expect(actual.ordinals, "Ordinals").to.be.an('array').lengthOf(options.width);
+      expect(actual.ordinals, "Ordinals").to.deep.equal(['First', 'Last', 'Age', 'Nickname', 'checkbox']);
+      expect(actual.getRowCount()).to.equal(options.limit);
+      expect(actual.selection.length).to.equal(options.limit);
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(options.limit);
+        actual.selection.forEach(function(selid) {
+        	// Top will get adjusted because it contains the header
+          expect(data[selid], name).to.equal(contents[options.top + selid][options.left + colid - 1]);
+        });
+      });
+    });
   });
 });
 
