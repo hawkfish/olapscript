@@ -142,12 +142,16 @@ class RefExpr extends Expr {
     this.reference = reference;
   }
 
-  alias() {
+  toString() {
   	if (this.reference.includes(' ')) {
     	return '"' + this.reference + '"';
     } else {
     	return this.reference;
     }
+  }
+
+  alias() {
+  	return this.reference;
   }
 
   evaluate(namespace, selection, length) {
@@ -177,6 +181,10 @@ class ConstExpr extends Expr {
     this.datatype = typeof constant;
   }
 
+  toString() {
+    return String(this.constant);
+  }
+
   alias() {
     return String(this.constant);
   }
@@ -203,7 +211,7 @@ class CaseExpr extends Expr {
 		}
 	}
 
-	alias() {
+	toString() {
 		var result = 'case';
 		if (this.expr) {
 			result += ' ' + this.expr.alias();
@@ -216,6 +224,10 @@ class CaseExpr extends Expr {
 		result += ' else ' + this.args[a++].alias() + ' end';
 
 		return result;
+	}
+
+	alias() {
+		return "case";
 	}
 
 	evaluate(namespace, selection, length) {
