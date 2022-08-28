@@ -24,4 +24,11 @@ describe('Rows', function() {
     	actual.forEach(row => expect(row).to.have.keys(["first", "last", "age"]));
   	});
   });
+  describe('getColumn', function() {
+    it('should extract an array of data', function() {
+    	const actual = Table.fromRows(bedrock).getColumn("first");
+    	expect(actual).to.be.an('array').lengthOf(bedrock.length);
+    	actual.forEach((val, rowid) => expect(val).to.equal(bedrock[rowid].first));
+  	});
+  });
 });
