@@ -176,6 +176,41 @@ describe('Conditional functions', function() {
 		});
 	});
 
+	describe('between', function() {
+		const f = Expr.between;
+
+		it('should compare semantically greater or equal values', function() {
+			Object.entries(fixtures).forEach(function(entry) {
+				const type = entry[0]
+				const vals = entry[1];
+
+				expect(f(vals[0], vals[0], vals[1]), type).to.be.true;
+				expect(f(vals[1], vals[0], vals[1]), type).to.be.true;
+				expect(f(vals[0], vals[1], vals[1]), type).to.be.false;
+				expect(f(vals[1], vals[0], vals[0]), type).to.be.false;
+			});
+		});
+
+		it('should return null when comparing to null', function() {
+			// All null
+			expect(f(null, null, null)).to.be.null;
+			Object.entries(fixtures).forEach(function(entry) {
+				const type = entry[0]
+				const vals = entry[1];
+				// Two nulls
+				vals.forEach(function(val) {
+					expect(f(val, null, null), type).to.be.null;
+					expect(f(null, val, null), type).to.be.null;
+					expect(f(null, null, val), type).to.be.null;
+				});
+				// One null
+				expect(f(vals[0], vals[1], null), type).to.be.null;
+				expect(f(null, vals[0], vals[1]), type).to.be.null;
+				expect(f(vals[0], vals[1], null), type).to.be.null;
+			});
+		});
+	});
+
 	describe('isdistinct', function() {
 		const f = Expr.isdistinct;
 
