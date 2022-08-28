@@ -1236,6 +1236,17 @@ Table.prototype.toRows = function() {
 }
 
 /**
+ * Returns a column as an Array.
+ *
+ * @param {Integer} rowid
+ * @returns {Array}
+ */
+Table.prototype.getColumn = function(name) {
+  const that = this;
+	return this.selection.map(selidx => that.namespace[name].data[selidx]);
+}
+
+/**
  * Projects a table to new column names.
  * The mappings are taking in order and
  * the new table has only the mapped columns.
