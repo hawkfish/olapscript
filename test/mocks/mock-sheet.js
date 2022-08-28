@@ -16,8 +16,8 @@ class MockRange {
     return this
       .sheet
       .values
-      .filter((row, rowid) => (that.row-1 <= rowid && rowid < that.numRows))
-      .map(row => row.filter((val, colid) => (that.column - 1 <= colid  && colid < that.numCols)));
+      .filter((row, rowid) => (that.row <= rowid + 1 && rowid + 1 < that.row + that.numRows))
+      .map(row => row.filter((val, colid) => (that.column <= colid + 1  && colid + 1 < that.column + that.numCols)));
   }
 };
 
