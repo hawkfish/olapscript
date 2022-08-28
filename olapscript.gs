@@ -36,6 +36,9 @@ class Column {
   }
 }
 
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
     Column
@@ -63,9 +66,8 @@ if (typeof module !== 'undefined') {
  */
 
 /**
- * Hack around App Script import mess
+ * Node imports
  */
-
 if (typeof Column === 'undefined') {
   Column = require("./column").Column;
 }
@@ -315,7 +317,9 @@ class CaseExpr extends Expr {
 	}
 }
 
-
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
     Expr, FuncExpr, ConstExpr, RefExpr, CaseExpr
@@ -758,6 +762,9 @@ class StringAgg extends ValueAggr {
 	}
 };
 
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
     Aggr, CountStar, Count,
@@ -822,9 +829,8 @@ if (typeof module !== 'undefined') {
  */
 
 /**
- * Hack around App Script import mess
+ * Node imports
  */
-
 if (typeof Column === 'undefined') {
   Column = require("./column").Column;
 }
@@ -1659,6 +1665,9 @@ Table.prototype.limit = function(count, offset) {
   return new Table(this.namespace, this.ordinals, selection, this);
 }
 
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
       Table
