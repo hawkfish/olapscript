@@ -455,6 +455,23 @@ Table.prototype.getRow = function(rowid) {
 }
 
 /**
+ * Returns a Table as an Array of rows.
+ * Note that this is not the internal model,
+ * so it should be used only for truly row-based operations.
+ *
+ * @returns {Array}
+ */
+Table.prototype.toRows = function() {
+	const that = this;
+	return this.selection.map(function(selid) {
+		return that.ordinals.reduce(function (row, name) {
+			return { ...row, [name]: that.namespace[name].data[selid]};
+			},
+			{});
+	});
+}
+
+/**
  * Projects a table to new column names.
  * The mappings are taking in order and
  * the new table has only the mapped columns.
