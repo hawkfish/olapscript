@@ -54,9 +54,8 @@
  */
 
 /**
- * Hack around App Script import mess
+ * Node imports
  */
-
 if (typeof Column === 'undefined') {
   Column = require("./column").Column;
 }
@@ -891,6 +890,9 @@ Table.prototype.limit = function(count, offset) {
   return new Table(this.namespace, this.ordinals, selection, this);
 }
 
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
       Table

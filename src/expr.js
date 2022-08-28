@@ -20,9 +20,8 @@
  */
 
 /**
- * Hack around App Script import mess
+ * Node imports
  */
-
 if (typeof Column === 'undefined') {
   Column = require("./column").Column;
 }
@@ -272,7 +271,9 @@ class CaseExpr extends Expr {
 	}
 }
 
-
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
     Expr, FuncExpr, ConstExpr, RefExpr, CaseExpr
