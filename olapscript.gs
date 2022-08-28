@@ -1008,9 +1008,7 @@ Table.fromSheet = function(sheet, options_p) {
   // Extract the header
   var header = options.columns || Array(options.width).fill(null).map((v, i) => 'F' + (i+1));
   if (options.headerCount) {
-    const headerRange = sheet.getRange(
-      options.header, options.left,
-      options.header + options.headerCount - 1, options.left + options.width - 1);
+    const headerRange = sheet.getRange(options.header, options.left, options.headerCount, options.width);
     header = headerRange.getValues().reduce(function(header, row) {
       return row.reduce(function(header, text, colid) {
         if (text) {
@@ -1025,9 +1023,7 @@ Table.fromSheet = function(sheet, options_p) {
   }
 
   // Extract the values
-  const valueRange = sheet.getRange(
-    options.top, options.left,
-    options.top + options.limit - 1, options.left + options.width - 1);
+  const valueRange = sheet.getRange(options.top, options.left, options.limit, options.width);
   const values = valueRange.getValues();
 
   // Create unique column names
