@@ -268,6 +268,9 @@ class StringAgg extends ValueAggr {
 	}
 };
 
+/**
+ * Node exports
+ */
 if (typeof module !== 'undefined') {
   module.exports  = {
     Aggr, CountStar, Count,
