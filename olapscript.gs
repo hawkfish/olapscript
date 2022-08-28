@@ -369,7 +369,7 @@ Expr.not = function(b) {
 }
 
 /**
- *	eq, ne, le, lt, ge, gt, isdistinct, isnotdistinct, isnull, isnotnull
+ *	eq, ne, le, lt, ge, gt, isdistinct, isnotdistinct, isnull, isnotnull, between
  *
  * Since Javascript doesn't expose these as function objects,
  * we have them in the library for potentially reasoning about expression trees.
@@ -396,6 +396,10 @@ Expr.gt = function(lhs, rhs) {
 
 Expr.ge = function(lhs, rhs) {
 	return Expr.nullWrapper_((l, r) => (l >= r), lhs, rhs);
+}
+
+Expr.between = function(val, low, high) {
+	return Expr.nullWrapper_((x, lo, hi) => ((lo <= x) && (x <= hi)), val, low, high);
 }
 
 Expr.isdistinct = function(lhs, rhs) {
