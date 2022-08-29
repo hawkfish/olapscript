@@ -410,6 +410,13 @@ Expr.divide = function(...args) {
 	return args.reduce((result, arg) => (result === null) ? arg : (result / arg));
 }
 
+Expr.mod = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : (result % arg));
+}
+
 /**
  * Casting functions
  */
