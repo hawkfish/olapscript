@@ -377,6 +377,19 @@ Expr.isnotnull = function(lhs) {
 }
 
 /**
+ *	Arithmetic Functions
+ *
+ * Since Javascript doesn't expose these as function objects,
+ * we have them in the library for potentially reasoning about expression trees.
+ */
+Expr.plus = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result + arg));
+}
+
+/**
  * Casting functions
  */
 
