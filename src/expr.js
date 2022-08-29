@@ -389,6 +389,13 @@ Expr.plus = function(...args) {
 	return args.reduce((result, arg) => (result + arg));
 }
 
+Expr.minus = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result - arg));
+}
+
 /**
  * Casting functions
  */
