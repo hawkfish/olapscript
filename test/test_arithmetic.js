@@ -78,4 +78,25 @@ describe('Arithmetic functions', function() {
 			expect(f(1, 1, 1)).to.equal(1);
 		});
 	});
+
+	describe('DIVIDE', function() {
+		const f = Expr.divide;
+		it('should divide two numbers', function() {
+			expect(f(-2, 2)).to.equal(-1);
+			expect(f(1, 2)).to.equal(0.5);
+			expect(f(1, 0)).to.equal(Infinity);
+			expect(f(0, 0)).to.be.NaN;
+		});
+		it('should produce null if any argument is null', function() {
+			expect(f(null, 0)).to.be.null;
+			expect(f(null, 1)).to.be.null;
+			expect(f(0, null)).to.be.null;
+			expect(f(1, null)).to.be.null;
+		});
+		it('should support nary evaluation for numbers', function() {
+			expect(f(1, 1, null)).to.be.null;
+			expect(f(1, 1, 0)).to.equal(Infinity);
+			expect(f(1, 1, 1)).to.equal(1);
+		});
+	});
 });

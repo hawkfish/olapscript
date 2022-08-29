@@ -403,6 +403,13 @@ Expr.times = function(...args) {
 	return args.reduce((result, arg) => (result * arg), 1);
 }
 
+Expr.divide = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : (result / arg));
+}
+
 /**
  * Casting functions
  */
