@@ -133,6 +133,22 @@ describe('Arithmetic functions', function() {
 		});
 	});
 
+	describe('NEGATE', function() {
+		const f = Expr.negate;
+		it('should negate integers', function() {
+			expect(f(0)).to.equal(0);
+			expect(f(5)).to.equal(-5);
+			expect(f(-2)).to.equal(2);
+		});
+		it('should negate floating point numbers', function() {
+			expect(f(3.5)).to.equal(-3.5);
+			expect(f(-2.25)).to.equal(2.25);
+		});
+		it('should produce null if the argument is null', function() {
+			expect(f(null)).to.be.null;
+		});
+	});
+
 	describe('POWER', function() {
 		const f = Expr.power;
 		it('should compute the power of two positive integers', function() {

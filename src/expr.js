@@ -424,6 +424,10 @@ Expr.power = function(...args) {
 	return args.reduce((result, arg) => (result === null) ? arg : result ** arg);
 }
 
+Expr.negate = function(arg) {
+	return Expr.nullWrapper_(a => -a, arg);
+}
+
 /**
  * Casting functions
  */
