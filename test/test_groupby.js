@@ -61,6 +61,15 @@ describe('Table', function() {
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
     	expect(actual.namespace.CountStar.data).to.deep.equal([3, 3]);
   	});
+    it('should normalise anonymous aggregate classes', function() {
+    	const actual = Table
+    		.fromRows(bedrock)
+    		.groupBy([{expr: new RefExpr("last"), as: "family"}], CountStar);
+    	expect(actual.ordinals).to.deep.equal(["family", "CountStar"]);
+    	expect(actual.namespace).to.have.keys(actual.ordinals);
+    	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
+    	expect(actual.namespace.CountStar.data).to.deep.equal([3, 3]);
+  	});
     it('should compute aggregates with inputs', function() {
     	const actual = Table
     		.fromRows(bedrock)
