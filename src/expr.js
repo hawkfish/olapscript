@@ -377,6 +377,58 @@ Expr.isnotnull = function(lhs) {
 }
 
 /**
+ *	Arithmetic Functions
+ *
+ * Since Javascript doesn't expose these as function objects,
+ * we have them in the library for potentially reasoning about expression trees.
+ */
+Expr.plus = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result + arg));
+}
+
+Expr.minus = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result - arg));
+}
+
+Expr.times = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result * arg), 1);
+}
+
+Expr.divide = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : (result / arg));
+}
+
+Expr.mod = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : (result % arg));
+}
+
+Expr.power = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : result ** arg);
+}
+
+Expr.negate = function(arg) {
+	return Expr.nullWrapper_(a => -a, arg);
+}
+
+/**
  * Casting functions
  */
 
