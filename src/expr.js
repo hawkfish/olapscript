@@ -417,6 +417,13 @@ Expr.mod = function(...args) {
 	return args.reduce((result, arg) => (result === null) ? arg : (result % arg));
 }
 
+Expr.power = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result === null) ? arg : result ** arg);
+}
+
 /**
  * Casting functions
  */

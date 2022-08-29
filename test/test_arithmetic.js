@@ -132,4 +132,37 @@ describe('Arithmetic functions', function() {
 			expect(f(1, 1, 1)).to.equal(0);
 		});
 	});
+
+	describe('POWER', function() {
+		const f = Expr.power;
+		it('should compute the power of two positive integers', function() {
+			expect(f(2, 2)).to.equal(4);
+			expect(f(1, 2)).to.equal(1);
+			expect(f(1, 0)).to.equal(1);
+			expect(f(0, 0)).to.equal(1);
+		});
+		it('should compute the power of two integers', function() {
+			expect(f(3, 2)).to.equal(9);
+			expect(f(-3, 2)).to.equal(9);
+			expect(f(3, -2)).to.be.approximately(0.1111111111111111, 0.0001);
+			expect(f(-3, -2)).to.be.approximately(0.1111111111111111, 0.0001);
+		});
+		it('should compute the power of two floating point numbers', function() {
+			expect(f(3.5, 2.25)).to.be.approximately(16.75533439837541, 0.0001);
+			expect(f(-3.5, 2.25)).to.be.NaN
+			expect(f(3.5, -2.25)).to.be.approximately(0.059682485364002016, 0.0001);
+			expect(f(-3.5, -2.25)).to.be.NaN;
+		});
+		it('should produce null if any argument is null', function() {
+			expect(f(null, 0)).to.be.null;
+			expect(f(null, 1)).to.be.null;
+			expect(f(0, null)).to.be.null;
+			expect(f(1, null)).to.be.null;
+		});
+		it('should support nary evaluation for numbers', function() {
+			expect(f(2, 2, null)).to.be.null;
+			expect(f(2, 2, 0)).to.equal(1);
+			expect(f(2, 2, 2)).to.equal(16);
+		});
+	});
 });
