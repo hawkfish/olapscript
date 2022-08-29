@@ -396,6 +396,13 @@ Expr.minus = function(...args) {
 	return args.reduce((result, arg) => (result - arg));
 }
 
+Expr.times = function(...args) {
+	if (args.includes(null)) {
+		return null;
+	}
+	return args.reduce((result, arg) => (result * arg), 1);
+}
+
 /**
  * Casting functions
  */
