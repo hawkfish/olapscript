@@ -1542,11 +1542,14 @@ Table.normaliseAggr = function(aggr) {
   if (!aggr.func) {
     aggr = {func: aggr};
   }
-  aggr.args = aggr.args || [];
-  if (!Array.isArray(aggr.args)) {
-  	aggr.args = [aggr.args];
+  if (!aggr.func.initialize) {
+  	aggr.func = new aggr.func;
   }
-  aggr.args = aggr.args.map(arg => Table.normaliseExpr(arg));
+  aggr.func.args = aggr.func.args || [];
+  if (!Array.isArray(aggr.func.args)) {
+  	aggr.func.args = [aggr.func.args];
+  }
+  aggr.func.args = aggr.func.args.map(arg => Table.normaliseExpr(arg));
 
   aggr.as = aggr.as || aggr.func.constructor.name;
 
@@ -1574,10 +1577,10 @@ Table.prototype.groupby = function(groups, aggrs) {
   }
   groups = groups.map(group => Table.normaliseBinding(group));
 
+  aggrs = aggrs || [];
   if (aggrs && !Array.isArray(aggrs)) {
     aggrs = [aggrs,];
   }
-  aggrs = aggrs || [];
   aggrs = aggrs.map(aggr => Table.normaliseAggr(aggr));
 
   const that = this;
