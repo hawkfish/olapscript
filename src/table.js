@@ -368,6 +368,32 @@ Table.prototype.toSheet = function(sheet) {
 }
 
 /**
+ * Write a Table out to an array
+ *
+ * @returns {Array}
+ */
+Table.prototype.toArray = function() {
+  const lastColumn = this.ordinals.length;
+  if (lastColumn == 0) {
+    return [];
+  }
+
+  // Write the column headers in the first row
+  let headerArray = [];
+  let headers = [].concat([this.ordinals]);
+  headerArray.push(headers);
+
+  // Write the remaining data in the subsequent rows
+  const that = this;
+  const lastRow = 1 + this.getRowCount();
+  let selectionArray = [];
+  if (lastRow > 1) {
+    selectionArray = (that.selection.map(selid => this.ordinals.map(name => that.namespace[name].data[selid])));
+  }
+  return headers.concat(selectionArray);
+}
+
+/**
  * List all the tables in a Spreadsheet
  *
  * SELECT * FROM information_schema.tables
