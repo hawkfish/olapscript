@@ -71,6 +71,26 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table with missing column names', function() {
+      const dupes = [
+        ['Name', 'Last', 'Age', ''],
+        ['Joseph', 'Blow', 27, 'Joe'],
+        ['Mary', 'Smith', 32, 'Mary'],
+        ['Duplicate', 'Earl', 61, 'Dupe']
+      ];
+      const actual = Table.fromSheet(new Sheet('Duplicates', dupes));
+      expect(actual.ordinals).to.deep.equal(['Name', 'Last', 'Age', 'D']);
+      expect(actual.getRowCount()).to.equal(dupes.length - 1);
+      expect(actual.selection.length).to.equal(dupes.length - 1);
+      actual.selection.forEach((selid, rowid) => expect(selid).to.equal(rowid));
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(dupes.length - 1);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid]).to.equal(dupes[selid+1][colid]);
+        });
+      });
+    });
     it('should read a table with conflicting duplicate column names', function() {
       const contents = [
         ['Name', 'Name 2', 'Age', 'Name'],
@@ -172,7 +192,7 @@ describe('Table', function() {
       const sheet = new Sheet('Inside', contents);
       const actual = Table.fromSheet(sheet, options);
       expect(actual.ordinals).to.be.an('array').lengthOf(options.width);
-      expect(actual.ordinals).to.deep.equal([ 'F1', 'F2', 'F3', 'F4' ]);
+      expect(actual.ordinals).to.deep.equal([ 'A', 'B', 'C', 'D' ]);
       expect(actual.getRowCount(), "Row Count").to.equal(options.limit);
       expect(actual.selection.length).to.equal(options.limit);
       actual.ordinals.forEach(function(name, colid) {
