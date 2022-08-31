@@ -27,6 +27,12 @@
  * Parser - A class for tokenising and parsing Expr (and Aggr) nodes from strings.
  */
 class Parser {
+	constructor(text, options = {}) {
+		this.text = text;
+		this.alltokens = Parser.tokenise(text);
+		this.tokens = this.alltokens.filter(token => token.type > Parser.COMMENT);
+		this.next = 0;
+	}
 };
 
 Parser.patterns = [
@@ -41,7 +47,11 @@ Parser.patterns = [
 	// Numbers
 	/^(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/,
 	// Dates
-	/^(\#[-+:.,\w ]+\#)/
+	/^(\#[-+:.,\w ]+\#)/,
+	// Identifiers
+	/^([A-Za-z_]\w*)/,
+	// Symbols
+	/^([(),:\[\]{}])/
 ];
 
 /**
@@ -54,9 +64,11 @@ Parser.STRING = Parser.COMMENT + 1;
 Parser.REFERENCE = Parser.STRING + 1;
 Parser.NUMBER = Parser.REFERENCE + 1;
 Parser.DATE = Parser.NUMBER + 1;
+Parser.IDENTIFIER = Parser.DATE + 1;
+Parser.SYMBOL = Parser.IDENTIFIER + 1;
 Parser.UNKNOWN = Parser.patterns.length;
 // End of Text token type
-Parser.EOT = -1;
+Parser.EOT = Parser.UNKNOWN + 1;
 
 /**
  * readToken - Reads a token from the current position
@@ -93,7 +105,7 @@ Parser.tokenise = function(text) {
 	for (var pos = 0; pos < text.length;) {
 		const token = Parser.readToken(text, pos);
 		if (token.text === null) {
-			throw ReferenceError("Unknown token at position " + pos);
+			throw SyntaxError("Unknown token at position " + pos);
 		}
 		tokens.push(token);
 		pos += token.text.length;
@@ -104,6 +116,44 @@ Parser.tokenise = function(text) {
 }
 
 Parser.tokenize = Parser.tokenise;
+
+Parser.prototype.peek_ = function() {
+	return this.tokens[this.next];
+}
+
+Parser.prototype.next_ = function() {
+	return this.tokens[this.next++];
+}
+
+Parser.prototype.expect_ = function(type, text) {
+	const token = this.next_();
+	if (token.type != type) {
+		throw SyntaxError("Expected token type " +  type + " but found " + token.type);
+	}
+	if (text && text != token.text) {
+		throw SyntaxError("Expected token '" +  text + "' but found '" + token.text + "'");
+	}
+
+	return token;
+}
+
+Parser.prototype.expr_ = function() {
+	var token = this.next_();
+	switch (token.type) {
+	case Parser.STRING:
+		return new ConstExpr(token.text.slice(1, -1).replace(/''/g, "'"));
+	case Parser.NUMBER:
+		return new ConstExpr(JSON.parse(token.text));
+	case Parser.DATE:
+		return new ConstExpr(new Date(token.text.slice(1, -1)));
+	}
+}
+
+Parser.prototype.parse = function() {
+	const expr = this.expr_();
+	this.expect_(Parser.EOT);
+	return expr;
+}
 
 /**
  * Node exports
