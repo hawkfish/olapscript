@@ -251,6 +251,12 @@ describe('Parser', function() {
 			expectParse("contains('fnord', 'o')", new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')]));
 		});
 
+		it('should parse function calls with parenthesised arguments', function() {
+			const setup = "contains(('fnord'), 'o')"
+			const expected = new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')])
+			expectParse(setup, expected);
+		});
+
 		it('should throw for unknown functions', function() {
 			expectThrow("unknown(1, 2)", "Unknown function");
 			expectThrow("trimm(1, 2)", 'Did you mean "TRIM"');
@@ -267,7 +273,7 @@ describe('Parser', function() {
 
 		it('should throw for unexpected tokens', function() {
 			expectThrow("contains[1, 2]", "Expected token");
-			expectThrow("contains(1: 2)", "Expected token");
+			expectThrow("contains(1: 2)", "Unexpected token");
 			expectThrow("contains(1, 2) }", "Expected token");
 			expectThrow("}", "Unexpected token");
 			expectThrow("(54(", "Expected token ')'");

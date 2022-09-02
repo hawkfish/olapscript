@@ -179,12 +179,11 @@ Parser.prototype.func_ = function(name) {
 	const args = [];
 
 	this.expect_(Parser.SYMBOL, '(');
-	while (!this.peek_(Parser.SYMBOL)) {
+	while (!this.peek_(Parser.SYMBOL, ')')) {
 		args.push(this.expr_());
-		if (this.peek_(Parser.SYMBOL, ')')) {
-			break;
+		if (this.peek_(Parser.SYMBOL, ',')) {
+			this.expect_(Parser.SYMBOL, ',');
 		}
-		this.expect_(Parser.SYMBOL, ',');
 	}
 	this.expect_(Parser.SYMBOL, ')');
 
