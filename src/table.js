@@ -181,6 +181,22 @@ function findLastIndex(array, predicate) {
 };
 
 /**
+ * defaultColumnName
+ *
+ * @param {Number} Column number (0-based)
+ * @returns {String} the default column name (A-ZZ)
+ */
+Table.defaultColumnName = function(colno) {
+	const d0 = colno % 26;
+	const d1 = (colno - d0) / 26;
+	if (d1) {
+		return String.fromCharCode(d1 + 65, d0 + 65);
+	} else {
+		return String.fromCharCode(d0 + 65);
+	}
+}
+
+/**
  * Create a Table from a given sheet.
  *
  * @param {Sheet} sheet
@@ -237,7 +253,7 @@ Table.fromSheet = function(sheet, options_p) {
   }
 
   // Extract the header
-  var header = options.columns || Array(options.width).fill(null).map((v, i) => 'F' + (i+1));
+  var header = options.columns || Array(options.width).fill(null).map((v, colno) => Table.defaultColumnName(colno));
   if (options.headerCount) {
     const headerRange = sheet.getRange(options.header, options.left, options.headerCount, options.width);
     header = headerRange.getValues().reduce(function(header, row) {
@@ -251,6 +267,7 @@ Table.fromSheet = function(sheet, options_p) {
         return header;
       }, header);
     }, Array(options.width).fill(''));
+    header = header.map((name, colno) => name ? name : Table.defaultColumnName(colno));
   }
 
   // Extract the values
@@ -348,6 +365,32 @@ Table.prototype.toSheet = function(sheet) {
   }
 
   return this;
+}
+
+/**
+ * Write a Table out to an array
+ *
+ * @returns {Array}
+ */
+Table.prototype.toArray = function() {
+  const lastColumn = this.ordinals.length;
+  if (lastColumn == 0) {
+    return [];
+  }
+
+  // Write the column headers in the first row
+  let headerArray = [];
+  let headers = [].concat([this.ordinals]);
+  headerArray.push(headers);
+
+  // Write the remaining data in the subsequent rows
+  const that = this;
+  const lastRow = 1 + this.getRowCount();
+  let selectionArray = [];
+  if (lastRow > 1) {
+    selectionArray = (that.selection.map(selid => this.ordinals.map(name => that.namespace[name].data[selid])));
+  }
+  return headers.concat(selectionArray);
 }
 
 /**
