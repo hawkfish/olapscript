@@ -66,7 +66,9 @@ Parser.patterns = [
 	// Identifiers
 	/^([A-Za-z_]\w*)/,
 	// Symbols
-	/^([(),:\[\]{}])/
+	/^([(),:\[\]{}])/,
+	// Comparisons
+	/^(<>|(?:[=<>!]=?))/
 ];
 
 /**
@@ -81,6 +83,7 @@ Parser.NUMBER = Parser.REFERENCE + 1;
 Parser.DATE = Parser.NUMBER + 1;
 Parser.IDENTIFIER = Parser.DATE + 1;
 Parser.SYMBOL = Parser.IDENTIFIER + 1;
+Parser.COMPARISON = Parser.SYMBOL + 1;
 Parser.UNKNOWN = Parser.patterns.length;
 // End of Text token type
 Parser.EOT = Parser.UNKNOWN + 1;
@@ -222,15 +225,36 @@ Parser.prototype.case_ = function() {
 Parser.prototype.between_ = function(expr) {
 	const args = [expr];
 
-	// BETWEEN <expr>
+	// BETWEEN <factor>
 	this.expect_(Parser.IDENTIFIER, 'between');
-	args.push(this.expr_());
+	args.push(this.factor_());
 
-	// AND <expr>
+	// AND <factor>
 	this.expect_(Parser.IDENTIFIER, 'and');
-	args.push(this.expr_());
+	args.push(this.factor_());
 
 	return new FuncExpr(Expr.between, args);
+}
+
+Parser.compareFuncs = {
+	'=':  Expr.eq,
+	'<>': Expr.ne,
+	'!=': Expr.ne,
+	'<':  Expr.lt,
+	'<=': Expr.le,
+	'>':  Expr.gt,
+	'>=': Expr.ge
+};
+
+Parser.prototype.compare_ = function(factor) {
+	const args = [factor];
+
+	const op = this.expect_(Parser.COMPARISON);
+	const func = Parser.compareFuncs[op.text];
+
+	args.push(this.factor_());
+
+	return new FuncExpr(func, args);
 }
 
 Parser.prototype.factor_ = function() {
@@ -286,6 +310,11 @@ Parser.prototype.expr_ = function() {
 	// Postfix handling
 	if (this.peek_(Parser.IDENTIFIER, "between")) {
 		return this.between_(factor);
+	}
+
+	// Infix handling
+	if (this.peek_(Parser.COMPARISON)) {
+		return this.compare_(factor);
 	}
 
 	return factor;

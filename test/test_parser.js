@@ -58,6 +58,15 @@ describe('Parser', function() {
 			expectReadToken('{', Parser.SYMBOL);
 			expectReadToken('}', Parser.SYMBOL);
 		});
+		it('should read comparisons', function() {
+			expectReadToken('=', Parser.COMPARISON);
+			expectReadToken('<', Parser.COMPARISON);
+			expectReadToken('>', Parser.COMPARISON);
+			expectReadToken('<=', Parser.COMPARISON);
+			expectReadToken('>=', Parser.COMPARISON);
+			expectReadToken('!=', Parser.COMPARISON);
+			expectReadToken('<>', Parser.COMPARISON);
+		});
 	});
 
 	describe('tokenise', function() {
@@ -278,6 +287,18 @@ describe('Parser', function() {
 				[new RefExpr("importance"), new ConstExpr(0), new ConstExpr(3)]
 			);
 			expectParse(setup, expected);
+		});
+
+		it('should parse comparisons', function() {
+			const ref = new RefExpr("importance");
+			const one = new ConstExpr(1);
+			expectParse('"importance" = 1', new FuncExpr(Expr.eq, [ref, one]));
+			expectParse('"importance" > 1', new FuncExpr(Expr.gt, [ref, one]));
+			expectParse('"importance" >= 1', new FuncExpr(Expr.ge, [ref, one]));
+			expectParse('"importance" < 1', new FuncExpr(Expr.lt, [ref, one]));
+			expectParse('"importance" <= 1', new FuncExpr(Expr.le, [ref, one]));
+			expectParse('"importance" != 1', new FuncExpr(Expr.ne, [ref, one]));
+			expectParse('"importance" <> 1', new FuncExpr(Expr.ne, [ref, one]));
 		});
 
 		it('should throw for unexpected tokens', function() {
