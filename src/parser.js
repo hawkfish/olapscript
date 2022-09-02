@@ -126,6 +126,10 @@ Parser.tokenise = function(text) {
 
 Parser.tokenize = Parser.tokenise;
 
+Parser.onUnexpected = function(token) {
+	throw SyntaxError('Unexpected token type ' +  token.type + ' ("' + token.text + '")');
+}
+
 Parser.prototype.peek_ = function() {
 	return this.tokens[this.next];
 }
@@ -192,14 +196,26 @@ Parser.prototype.expr_ = function() {
 			return new ConstExpr(true);
 		case 'false':
 			return new ConstExpr(false);
+		case 'not':
+			return new FuncExpr(Expr.not, [this.expr_()]);
 		default:
 			if (this.peek_().type != Parser.SYMBOL) {
 				return new RefExpr(token.text);
 			}
 			return this.func_(token.text);
 		}
+	case Parser.SYMBOL:
+		switch(token.text) {
+		case '(': {
+			const e = this.expr_();
+			this.expect_(Parser.SYMBOL, ')');
+			return e;
+		}
+		default:
+			Parser.onUnexpected(token);
+		}
 	default:
-		throw SyntaxError('Unexpected token type ' +  token.type + ' ("' + token.text + '")');
+		Parser.onUnexpected(token);
 	}
 }
 

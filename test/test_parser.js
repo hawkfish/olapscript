@@ -169,6 +169,15 @@ describe('Parser', function() {
 			expectParse("contains('fnord', 'o')", new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')]));
 		});
 
+		it('should parse prefix functions', function() {
+			expectParse("NOT true", new FuncExpr(Expr.not, [new ConstExpr(true)]));
+		});
+
+		it('should parse parenthesised expressions', function() {
+			expectParse("(NOT true)", new FuncExpr(Expr.not, [new ConstExpr(true)]));
+			expectParse("((NOT false))", new FuncExpr(Expr.not, [new ConstExpr(false)]));
+		});
+
 		it('should throw for unknown functions', function() {
 			expectThrow("unknown(1, 2)", "Unknown function");
 			expectThrow("trimm(1, 2)", 'Did you mean "TRIM"');
@@ -178,6 +187,8 @@ describe('Parser', function() {
 			expectThrow("contains[1, 2]", "Expected token");
 			expectThrow("contains(1: 2)", "Expected token");
 			expectThrow("contains(1, 2) }", "Expected token");
+			expectThrow("}", "Unexpected token");
+			expectThrow("(54(", "Expected token ')'");
 		});
 	});
 });
