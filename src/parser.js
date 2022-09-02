@@ -255,6 +255,31 @@ Parser.prototype.compare_ = function(factor) {
 	args.push(this.factor_());
 
 	return new FuncExpr(func, args);
+};
+
+Parser.prototype.is_ = function(factor) {
+	const args = [factor];
+
+	// IS
+	this.expect_(Parser.IDENTIFIER, 'is');
+
+	// NOT
+	const negated = this.peek_(Parser.IDENTIFIER, 'not');
+	if (negated) {
+		this.next_();
+	}
+
+	const token = this.expect_(Parser.IDENTIFIER);
+	switch (token.text) {
+	case 'null':
+		return new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, args);
+	case 'distinct':
+		this.expect_(Parser.IDENTIFIER, 'from');
+		args.push(this.factor_());
+		return new FuncExpr(negated ? Expr.isnotdistinct : Expr.isdistinct, args);
+	default:
+		Parser.onUnexpected(token);
+	}
 }
 
 Parser.prototype.factor_ = function() {
@@ -307,14 +332,19 @@ Parser.prototype.factor_ = function() {
 Parser.prototype.expr_ = function() {
 	const factor = this.factor_();
 
-	// Postfix handling
+	// Comparison
+	if (this.peek_(Parser.COMPARISON)) {
+		return this.compare_(factor);
+	}
+
+	// BETWEEN
 	if (this.peek_(Parser.IDENTIFIER, "between")) {
 		return this.between_(factor);
 	}
 
-	// Infix handling
-	if (this.peek_(Parser.COMPARISON)) {
-		return this.compare_(factor);
+	// IS
+	if (this.peek_(Parser.IDENTIFIER, "is")) {
+		return this.is_(factor);
 	}
 
 	return factor;

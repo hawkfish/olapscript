@@ -301,6 +301,21 @@ describe('Parser', function() {
 			expectParse('"importance" <> 1', new FuncExpr(Expr.ne, [ref, one]));
 		});
 
+		it('should parse IS [NOT] NULL', function() {
+			const ref = new RefExpr("importance");
+			expectParse('"importance" IS NULL', new FuncExpr(Expr.isnull, [ref]));
+			expectParse('"importance" IS NOT NULL', new FuncExpr(Expr.isnull, [ref]));
+			expectThrow('"importance" IS DEAD', 'Unexpected token');
+		});
+
+		it('should parse IS [NOT] DISTINCT FROM', function() {
+			const ref = new RefExpr("importance");
+			const one = new ConstExpr(1);
+			expectParse('"importance" IS DISTINCT FROM 1', new FuncExpr(Expr.isdistinct, [ref, one]));
+			expectParse('"importance" IS NOT DISTINCT FROM 1', new FuncExpr(Expr.isnotdistinct, [ref, one]));
+			expectThrow('"importance" IS DISTINCT 1', 'Expected token type');
+		});
+
 		it('should throw for unexpected tokens', function() {
 			expectThrow("contains[1, 2]", "Expected token");
 			expectThrow("contains(1: 2)", "Unexpected token");
