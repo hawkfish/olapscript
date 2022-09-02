@@ -68,6 +68,14 @@ describe('Parser', function() {
 			expectReadToken('!=', Parser.COMPARISON);
 			expectReadToken('<>', Parser.COMPARISON);
 		});
+		it('should read operators', function() {
+			expectReadToken('+', Parser.OPERATOR);
+			expectReadToken('-', Parser.OPERATOR);
+			expectReadToken('*', Parser.OPERATOR);
+			expectReadToken('/', Parser.OPERATOR);
+			expectReadToken('%', Parser.OPERATOR);
+			expectReadToken('^', Parser.OPERATOR);
+		});
 	});
 
 	describe('tokenise', function() {
@@ -276,6 +284,9 @@ describe('Parser', function() {
 
 		it('should parse prefix functions', function() {
 			expectParse("NOT true", new FuncExpr(Expr.not, [new ConstExpr(true)]));
+			const cost = new RefExpr("cost");
+			expectParse('- "cost"', new FuncExpr(Expr.negate, [cost]));
+			expectParse('+ "cost"', cost);
 		});
 
 		it('should parse parenthesised expressions', function() {

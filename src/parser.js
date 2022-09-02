@@ -68,7 +68,9 @@ Parser.patterns = [
 	// Symbols
 	/^([(),:\[\]{}])/,
 	// Comparisons
-	/^(<>|(?:[=<>!]=?))/
+	/^(<>|(?:[=<>!]=?))/,
+	// Operators
+	/^([-+*/%^])/
 ];
 
 /**
@@ -84,6 +86,7 @@ Parser.DATE = Parser.NUMBER + 1;
 Parser.IDENTIFIER = Parser.DATE + 1;
 Parser.SYMBOL = Parser.IDENTIFIER + 1;
 Parser.COMPARISON = Parser.SYMBOL + 1;
+Parser.OPERATOR = Parser.COMPARISON + 1;
 Parser.UNKNOWN = Parser.patterns.length;
 // End of Text token type
 Parser.EOT = Parser.UNKNOWN + 1;
@@ -102,6 +105,7 @@ Parser.typeNames = [
 	'identifier',
 	'symbol',
 	'comparison',
+	'operator',
 	'unknown',
 	'end',
 ];
@@ -116,6 +120,7 @@ Parser.typeArticles = [
 	'an',
 	'a',
 	'a',
+	'an',
 	'the',
 	'the',
 ];
@@ -363,6 +368,17 @@ Parser.prototype.factor_ = function() {
 			this.expect_(Parser.SYMBOL, ')');
 			return e;
 		}
+		default:
+			Parser.onUnexpected(token);
+		}
+	case Parser.OPERATOR:
+		switch (token.text) {
+		case '-':
+			// Unary minus
+			return new FuncExpr(Expr.negate, [this.expr_()]);
+		case '+':
+			// Unary plus
+			return this.expr_();
 		default:
 			Parser.onUnexpected(token);
 		}
