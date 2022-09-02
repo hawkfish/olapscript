@@ -82,9 +82,10 @@ describe('Parser', function() {
 	describe('parse', function() {
 		const Expr = expr.Expr;
 		const FuncExpr = expr.FuncExpr;
+		const CaseExpr = expr.CaseExpr;
 
 		const expectExpr = function(expected, actual, msg) {
-			expect(actual.type).to.equal(expected.type);
+			expect(actual.type, msg).to.equal(expected.type);
 			switch (expected.type) {
 			case 'constant':
 				expect(actual.constant).to.deep.equal(expected.constant);
@@ -95,12 +96,16 @@ describe('Parser', function() {
 			case 'function':
 				expect(actual.func.name).to.equal(expected.func.name);
 				expect(actual.args.length).to.equal(expected.args.length);
-				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], msg));
+				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], msg));
 				break;
 			case 'case':
-				expectExpr(actual.expr, expected.expr);
+				if (expected.expr == null) {
+					expect(actual.expr).to.be.null;
+				} else {
+					expectExpr(expected.expr, actual.expr);
+				}
 				expect(actual.args.length).to.equal(expected.args.length);
-				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], msg));
+				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], msg));
 				break;
 			default:
 				expect(false, "Unknown expression type").to.be.true;
@@ -126,6 +131,13 @@ describe('Parser', function() {
 			expectParse("'first''second''third'", new ConstExpr("first'second'third"));
 			expectParse("''''", new ConstExpr("'"));
 			expectParse("''''''", new ConstExpr("''"));
+		});
+
+		it('should parse references', function() {
+			expectParse('"column"', new RefExpr('column'));
+			expectParse('"column name"', new RefExpr('column name'));
+			expectParse('"column ""name"" with quotes"', new RefExpr('column "name" with quotes'));
+			expectThrow('""', "Empty identifier");
 		});
 
 		it('should parse numbers', function() {
@@ -155,6 +167,76 @@ describe('Parser', function() {
 			expectParse("False", new ConstExpr(false));
 		});
 
+		it('should parse CASE WHEN ELSE', function() {
+			const setup = 'CASE\n' +
+				'WHEN CONTAINS("importance", \'high\') THEN 1\n' +
+				'WHEN CONTAINS("importance", \'medium\') THEN 2\n' +
+				'WHEN CONTAINS("importance", \'low\') THEN 3\n' +
+				'ELSE 4\n' +
+				'END'
+			;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr([
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')]), new ConstExpr(1),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')]), new ConstExpr(2),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')]), new ConstExpr(3),
+				new ConstExpr(4)
+			]);
+			expectParse(setup, expected);
+		});
+
+		it('should parse CASE WHEN', function() {
+			const setup = 'CASE\n' +
+				'WHEN CONTAINS("importance", \'high\') THEN 1\n' +
+				'WHEN CONTAINS("importance", \'medium\') THEN 2\n' +
+				'WHEN CONTAINS("importance", \'low\') THEN 3\n' +
+				'END'
+			;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr([
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')]), new ConstExpr(1),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')]), new ConstExpr(2),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')]), new ConstExpr(3),
+				new ConstExpr(null)
+			]);
+			expectParse(setup, expected);
+		});
+
+		it('should parse CASE <expr> WHEN ELSE', function() {
+			const setup = 'CASE "importance"\n' +
+				"WHEN 'high' THEN 1\n" +
+				"WHEN 'medium' THEN 2\n" +
+				"WHEN 'low' THEN 3\n" +
+				'ELSE 4\n' +
+				'END'
+			;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr([
+				new ConstExpr('high'), new ConstExpr(1),
+				new ConstExpr('medium'), new ConstExpr(2),
+				new ConstExpr('low'), new ConstExpr(3),
+				new ConstExpr(4)
+			], importance);
+			expectParse(setup, expected);
+		});
+
+		it('should parse CASE <expr> WHEN', function() {
+			const setup = 'CASE "importance"\n' +
+				"WHEN 'high' THEN 1\n" +
+				"WHEN 'medium' THEN 2\n" +
+				"WHEN 'low' THEN 3\n" +
+				'END'
+			;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr([
+				new ConstExpr('high'), new ConstExpr(1),
+				new ConstExpr('medium'), new ConstExpr(2),
+				new ConstExpr('low'), new ConstExpr(3),
+				new ConstExpr(null)
+			], importance);
+			expectParse(setup, expected);
+		});
+
 		it('should parse nullary function calls', function() {
 			expectParse("now()", new FuncExpr(Expr.now, []));
 			expectParse("NOW()", new FuncExpr(Expr.now, []));
@@ -169,6 +251,11 @@ describe('Parser', function() {
 			expectParse("contains('fnord', 'o')", new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')]));
 		});
 
+		it('should throw for unknown functions', function() {
+			expectThrow("unknown(1, 2)", "Unknown function");
+			expectThrow("trimm(1, 2)", 'Did you mean "TRIM"');
+		});
+
 		it('should parse prefix functions', function() {
 			expectParse("NOT true", new FuncExpr(Expr.not, [new ConstExpr(true)]));
 		});
@@ -176,11 +263,6 @@ describe('Parser', function() {
 		it('should parse parenthesised expressions', function() {
 			expectParse("(NOT true)", new FuncExpr(Expr.not, [new ConstExpr(true)]));
 			expectParse("((NOT false))", new FuncExpr(Expr.not, [new ConstExpr(false)]));
-		});
-
-		it('should throw for unknown functions', function() {
-			expectThrow("unknown(1, 2)", "Unknown function");
-			expectThrow("trimm(1, 2)", 'Did you mean "TRIM"');
 		});
 
 		it('should throw for unexpected tokens', function() {

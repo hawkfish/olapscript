@@ -28,6 +28,12 @@ if (typeof Expr === 'undefined') {
 if (typeof FuncExpr === 'undefined') {
   FuncExpr = require("./expr").FuncExpr;
 }
+if (typeof RefExpr === 'undefined') {
+  RefExpr = require("./expr").RefExpr;
+}
+if (typeof CaseExpr === 'undefined') {
+  CaseExpr = require("./expr").CaseExpr;
+}
 
 /**
  * Parser - A class for tokenising and parsing Expr (and Aggr) nodes from strings.
@@ -65,7 +71,7 @@ Parser.patterns = [
 
 /**
  *
- * Toke type codes
+ * Token type codes
  */
 Parser.WHITESPACE = 0;
 Parser.COMMENT = Parser.WHITESPACE + 1;
@@ -130,8 +136,15 @@ Parser.onUnexpected = function(token) {
 	throw SyntaxError('Unexpected token type ' +  token.type + ' ("' + token.text + '")');
 }
 
-Parser.prototype.peek_ = function() {
-	return this.tokens[this.next];
+Parser.prototype.peek_ = function(type, text) {
+	const token = this.tokens[this.next];
+	if (token.type != type) {
+		return false;
+	} else if (text && text != token.text) {
+		return false;
+	}
+
+	return true;
 }
 
 Parser.prototype.next_ = function() {
@@ -166,10 +179,9 @@ Parser.prototype.func_ = function(name) {
 	const args = [];
 
 	this.expect_(Parser.SYMBOL, '(');
-	while (this.peek_().type != Parser.SYMBOL) {
+	while (!this.peek_(Parser.SYMBOL)) {
 		args.push(this.expr_());
-		const token = this.peek_();
-		if (token.text == ')') {
+		if (this.peek_(Parser.SYMBOL, ')')) {
 			break;
 		}
 		this.expect_(Parser.SYMBOL, ',');
@@ -179,11 +191,45 @@ Parser.prototype.func_ = function(name) {
 	return new FuncExpr(func, args);
 }
 
+Parser.prototype.case_ = function() {
+	var expr = null;
+	const args = [];
+
+	// CASE <expr> WHEN
+	if (!this.peek_(Parser.IDENTIFIER, 'when')) {
+		expr = this.expr_();
+	}
+
+	// WHEN <expr> THEN <expr>
+	while (this.peek_(Parser.IDENTIFIER, 'when')) {
+		this.next_();
+		args.push(this.expr_());
+		this.expect_(Parser.IDENTIFIER, 'then');
+		args.push(this.expr_());
+	}
+
+	// ELSE <expr>
+	if (this.peek_(Parser.IDENTIFIER, 'else')) {
+		this.next_();
+		args.push(this.expr_());
+	}
+
+	// END
+	this.expect_(Parser.IDENTIFIER, 'end');
+
+	return new CaseExpr(args, expr);
+}
+
 Parser.prototype.expr_ = function() {
 	var token = this.next_();
 	switch (token.type) {
 	case Parser.STRING:
 		return new ConstExpr(token.text.slice(1, -1).replace(/''/g, "'"));
+	case Parser.REFERENCE:
+		if (token.text.length < 3) {
+			throw SyntaxError("Empty identifier at position " + token.pos);
+		}
+		return new RefExpr(token.text.slice(1, -1).replace(/""/g, '"'));
 	case Parser.NUMBER:
 		return new ConstExpr(JSON.parse(token.text));
 	case Parser.DATE:
@@ -198,8 +244,10 @@ Parser.prototype.expr_ = function() {
 			return new ConstExpr(false);
 		case 'not':
 			return new FuncExpr(Expr.not, [this.expr_()]);
+		case 'case':
+			return this.case_();
 		default:
-			if (this.peek_().type != Parser.SYMBOL) {
+			if (!this.peek_(Parser.SYMBOL, '(')) {
 				return new RefExpr(token.text);
 			}
 			return this.func_(token.text);
