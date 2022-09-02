@@ -271,6 +271,15 @@ describe('Parser', function() {
 			expectParse("((NOT false))", new FuncExpr(Expr.not, [new ConstExpr(false)]));
 		});
 
+		it('should parse BETWEEN', function() {
+			const setup = '"importance" BETWEEN 0 AND 3';
+			const expected = new FuncExpr(
+				Expr.between,
+				[new RefExpr("importance"), new ConstExpr(0), new ConstExpr(3)]
+			);
+			expectParse(setup, expected);
+		});
+
 		it('should throw for unexpected tokens', function() {
 			expectThrow("contains[1, 2]", "Expected token");
 			expectThrow("contains(1: 2)", "Unexpected token");

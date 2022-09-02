@@ -219,7 +219,21 @@ Parser.prototype.case_ = function() {
 	return new CaseExpr(args, expr);
 }
 
-Parser.prototype.expr_ = function() {
+Parser.prototype.between_ = function(expr) {
+	const args = [expr];
+
+	// BETWEEN <expr>
+	this.expect_(Parser.IDENTIFIER, 'between');
+	args.push(this.expr_());
+
+	// AND <expr>
+	this.expect_(Parser.IDENTIFIER, 'and');
+	args.push(this.expr_());
+
+	return new FuncExpr(Expr.between, args);
+}
+
+Parser.prototype.factor_ = function() {
 	var token = this.next_();
 	switch (token.type) {
 	case Parser.STRING:
@@ -264,6 +278,17 @@ Parser.prototype.expr_ = function() {
 	default:
 		Parser.onUnexpected(token);
 	}
+}
+
+Parser.prototype.expr_ = function() {
+	const factor = this.factor_();
+
+	// Postfix handling
+	if (this.peek_(Parser.IDENTIFIER, "between")) {
+		return this.between_(factor);
+	}
+
+	return factor;
 }
 
 Parser.prototype.parse = function() {
