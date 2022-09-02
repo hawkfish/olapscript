@@ -7,7 +7,7 @@ const Parser = parser.Parser;
 describe('Parser', function() {
 	describe('readToken', function() {
 		const expectReadToken = function(setup, type) {
-			expect(Parser.readToken(setup, 0)).to.deep.equal({type: type, pos: 0, text: setup});
+			expect(Parser.readToken(setup, 0)).to.deep.equal({type: type, pos: 0, text: setup, input: setup});
 		}
 
 		it('should read whitespace', function() {
@@ -18,16 +18,17 @@ describe('Parser', function() {
 		});
 		it('should read comments', function() {
 			expectReadToken("-- Comment", Parser.COMMENT);
-			expect(Parser.readToken('-- Comment\n  \n', 0)).to.deep.equal({type: Parser.COMMENT, pos: 0, text: '-- Comment'});
+			const returns = '-- Comment\n  \n';
+			expect(Parser.readToken(returns, 0)).to.deep.equal({
+				type: Parser.COMMENT, pos: 0, text: '-- Comment', input: returns
+			});
 		});
 		it('should read strings', function() {
-			expect(Parser.readToken("'string'", 0)).to.deep.equal({type: Parser.STRING, pos: 0, text: "'string'"});
 			expectReadToken("'string'", Parser.STRING);
 			expectReadToken("'front''back'", Parser.STRING);
 			expectReadToken("''", Parser.STRING);
 		});
 		it('should read references', function() {
-			expect(Parser.readToken('"column"', 0)).to.deep.equal({type: Parser.REFERENCE, pos: 0, text: '"column"'});
 			expectReadToken('"column"', Parser.REFERENCE);
 			expectReadToken('"column""quotes"', Parser.REFERENCE);
 			// This is not a valid reference, but that is not our problem!
@@ -71,19 +72,21 @@ describe('Parser', function() {
 
 	describe('tokenise', function() {
 		it('should tokenise whitespace and comments', function() {
-			expect(Parser.tokenise('-- Comment\n  \n', 0)).to.deep.equal([
-				{pos:  0, type: Parser.COMMENT, text: '-- Comment'},
-				{pos: 10, type: Parser.WHITESPACE, text: '\n  \n'},
-				{pos: 14, type: Parser.EOT, text: null}
+			const input = '-- Comment\n  \n';
+			expect(Parser.tokenise(input, 0)).to.deep.equal([
+				{pos:  0, type: Parser.COMMENT, text: '-- Comment', input: input},
+				{pos: 10, type: Parser.WHITESPACE, text: '\n  \n', input: input},
+				{pos: 14, type: Parser.EOT, text: null, input: input}
 			]);
 		});
 
 		it('should tokenise nullary function calls', function() {
-			expect(Parser.tokenise('now()')).to.deep.equal([
-				{pos: 0, type: Parser.IDENTIFIER, text: 'now'},
-				{pos: 3, type: Parser.SYMBOL, text: '('},
-				{pos: 4, type: Parser.SYMBOL, text: ')'},
-				{pos: 5, type: Parser.EOT, text: null}
+			const input = 'now()';
+			expect(Parser.tokenise(input)).to.deep.equal([
+				{pos: 0, type: Parser.IDENTIFIER, text: 'now', input: input},
+				{pos: 3, type: Parser.SYMBOL, text: '(', input: input},
+				{pos: 4, type: Parser.SYMBOL, text: ')', input: input},
+				{pos: 5, type: Parser.EOT, text: null, input: input}
 			]);
 		});
 	});
@@ -305,7 +308,7 @@ describe('Parser', function() {
 			const ref = new RefExpr("importance");
 			expectParse('"importance" IS NULL', new FuncExpr(Expr.isnull, [ref]));
 			expectParse('"importance" IS NOT NULL', new FuncExpr(Expr.isnull, [ref]));
-			expectThrow('"importance" IS DEAD', 'Unexpected token');
+			expectThrow('"importance" IS DEAD', 'Unexpected identifier ("dead") at position 16');
 		});
 
 		it('should parse IS [NOT] DISTINCT FROM', function() {
@@ -313,15 +316,15 @@ describe('Parser', function() {
 			const one = new ConstExpr(1);
 			expectParse('"importance" IS DISTINCT FROM 1', new FuncExpr(Expr.isdistinct, [ref, one]));
 			expectParse('"importance" IS NOT DISTINCT FROM 1', new FuncExpr(Expr.isnotdistinct, [ref, one]));
-			expectThrow('"importance" IS DISTINCT 1', 'Expected token type');
+			expectThrow('"importance" IS DISTINCT 1', "Expected 'from' but found '1' at position 25"	);
 		});
 
 		it('should throw for unexpected tokens', function() {
-			expectThrow("contains[1, 2]", "Expected token");
-			expectThrow("contains(1: 2)", "Unexpected token");
-			expectThrow("contains(1, 2) }", "Expected token");
-			expectThrow("}", "Unexpected token");
-			expectThrow("(54(", "Expected token ')'");
+			expectThrow("contains[1, 2]", "Expected the end but found a symbol at position 8");
+			expectThrow("contains(1: 2)", 'Unexpected symbol (":") at position 10');
+			expectThrow("contains(1, 2) }", "Expected the end but found a symbol at position 15");
+			expectThrow("}", 'Unexpected symbol ("}") at position 0');
+			expectThrow("(54(", "Expected ')' but found '(' at position 3");
 		});
 	});
 });

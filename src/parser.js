@@ -89,19 +89,51 @@ Parser.UNKNOWN = Parser.patterns.length;
 Parser.EOT = Parser.UNKNOWN + 1;
 
 /**
+ *
+ * Token type names
+ */
+Parser.typeNames = [
+	'whitespace',
+	'comment',
+	'string',
+	'reference',
+	'number',
+	'date',
+	'identifier',
+	'symbol',
+	'comparison',
+	'unknown',
+	'end',
+];
+
+Parser.typeArticles = [
+	'',
+	'a',
+	'a',
+	'a',
+	'a',
+	'a',
+	'an',
+	'a',
+	'a',
+	'the',
+	'the',
+];
+
+/**
  * readToken - Reads a token from the current position
  *
  *	@param {String} text - The text to read from
  *	@param {Number} pos - The position to read from
  *
- * Tokens have the structure {type: Number, text: String, pos: Number}
+ * Tokens have the structure {type: Number, text: String, pos: Number, input: String}
  */
-Parser.readToken = function(text, pos) {
-	const target = text.slice(pos);
-	const token = {type: 0, pos: pos, text: null};
+Parser.readToken = function(input, pos) {
+	const target = input.slice(pos);
+	const token = {type: 0, pos: pos, text: null, input: input};
 	for (; token.type < Parser.patterns.length; ++token.type) {
 		const pat = Parser.patterns[token.type];
-		const match = pat.exec(text.slice(pos))
+		const match = pat.exec(input.slice(pos))
 		if (match && !match.index) {
 			token.text = match[1];
 			break;
@@ -118,17 +150,17 @@ Parser.readToken = function(text, pos) {
  * @param {String} text - The text to tokenise
  * @returns <Array> An array of tokens.
  */
-Parser.tokenise = function(text) {
+Parser.tokenise = function(input) {
 	const tokens = [];
-	for (var pos = 0; pos < text.length;) {
-		const token = Parser.readToken(text, pos);
+	for (var pos = 0; pos < input.length;) {
+		const token = Parser.readToken(input, pos);
 		if (token.text === null) {
 			throw SyntaxError("Unknown token at position " + pos);
 		}
 		tokens.push(token);
 		pos += token.text.length;
 	}
-	tokens.push({type: Parser.EOT, pos: pos, text: null});
+	tokens.push({type: Parser.EOT, pos: pos, text: null, input: input});
 
 	return tokens;
 }
@@ -136,7 +168,10 @@ Parser.tokenise = function(text) {
 Parser.tokenize = Parser.tokenise;
 
 Parser.onUnexpected = function(token) {
-	throw SyntaxError('Unexpected token type ' +  token.type + ' ("' + token.text + '")');
+	throw SyntaxError(
+		'Unexpected ' + Parser.typeNames[token.type] +
+		' ("' + token.text +
+		'") at position ' + token.pos);
 }
 
 Parser.prototype.peek_ = function(type, text) {
@@ -156,11 +191,18 @@ Parser.prototype.next_ = function() {
 
 Parser.prototype.expect_ = function(type, text) {
 	const token = this.next_();
-	if (token.type != type) {
-		throw SyntaxError("Expected token type " +  type + " but found " + token.type);
-	}
 	if (text && text != token.text) {
-		throw SyntaxError("Expected token '" +  text + "' but found '" + token.text + "'");
+		throw SyntaxError(
+			"Expected '" + text +
+			"' but found '" + token.text +
+			"' at position " + token.pos
+		);
+	} else if (token.type != type) {
+		throw SyntaxError(
+			"Expected " + Parser.typeArticles[type] + ' ' + Parser.typeNames[type] +
+			" but found " + Parser.typeArticles[token.type] + ' ' + Parser.typeNames[token.type] +
+			" at position " + token.pos
+		);
 	}
 
 	return token;
