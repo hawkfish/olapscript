@@ -1,8 +1,8 @@
 const expect = require ("chai").expect;
 const parser = require('../src/parser');
+const expr = require('../src/expr');
 
 const Parser = parser.Parser;
-
 
 describe('Parser', function() {
 	describe('readToken', function() {
@@ -68,9 +68,21 @@ describe('Parser', function() {
 				{pos: 14, type: Parser.EOT, text: null}
 			]);
 		});
+
+		it('should tokenise nullary function calls', function() {
+			expect(Parser.tokenise('now()')).to.deep.equal([
+				{pos: 0, type: Parser.IDENTIFIER, text: 'now'},
+				{pos: 3, type: Parser.SYMBOL, text: '('},
+				{pos: 4, type: Parser.SYMBOL, text: ')'},
+				{pos: 5, type: Parser.EOT, text: null}
+			]);
+		});
 	});
 
 	describe('parse', function() {
+		const Expr = expr.Expr;
+		const FuncExpr = expr.FuncExpr;
+
 		const expectExpr = function(expected, actual, msg) {
 			expect(actual.type).to.equal(expected.type);
 			switch (expected.type) {
@@ -81,14 +93,14 @@ describe('Parser', function() {
 				expect(actual.reference).to.equal(expected.reference);
 				break;
 			case 'function':
-				expect(actual.func).to.equal(expected.func);
+				expect(actual.func.name).to.equal(expected.func.name);
 				expect(actual.args.length).to.equal(expected.args.length);
-				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], setup));
+				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], msg));
 				break;
 			case 'case':
 				expectExpr(actual.expr, expected.expr);
 				expect(actual.args.length).to.equal(expected.args.length);
-				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], setup));
+				actual.args.forEach((arg, a) => expectExpr(arg, expected.args[a], msg));
 				break;
 			default:
 				expect(false, "Unknown expression type").to.be.true;
@@ -100,6 +112,11 @@ describe('Parser', function() {
 			const parser = new Parser(setup);
 			const actual = parser.parse(setup);
 			expectExpr(expected, actual, setup);
+		}
+
+		const expectThrow = function(setup, expected) {
+			const parser = new Parser(setup);
+			expect(parser.parse.bind(parser)).to.throw(SyntaxError, expected);
 		}
 
 		it('should parse strings', function() {
@@ -120,6 +137,47 @@ describe('Parser', function() {
 		it('should parse dates', function() {
 			expectParse("#2022-08-30#", new ConstExpr(new Date(Date.UTC(2022, 7, 30, 0, 0, 0))));
 			expectParse("#1996-05-30 12:31:47#", new ConstExpr(new Date(1996, 4, 30, 12, 31, 47)));
+		});
+
+		it('should parse nulls', function() {
+			expectParse("NULL", new ConstExpr(null));
+			expectParse("null", new ConstExpr(null));
+			expectParse("Null", new ConstExpr(null));
+		});
+
+		it('should parse Booleans', function() {
+			expectParse("TRUE", new ConstExpr(true));
+			expectParse("true", new ConstExpr(true));
+			expectParse("True", new ConstExpr(true));
+
+			expectParse("FALSE", new ConstExpr(false));
+			expectParse("false", new ConstExpr(false));
+			expectParse("False", new ConstExpr(false));
+		});
+
+		it('should parse nullary function calls', function() {
+			expectParse("now()", new FuncExpr(Expr.now, []));
+			expectParse("NOW()", new FuncExpr(Expr.now, []));
+		});
+
+		it('should parse unary function calls', function() {
+			expectParse("ltrim('fnord')", new FuncExpr(Expr.ltrim, [new ConstExpr('fnord')]));
+			expectParse("RTrim('fnord')", new FuncExpr(Expr.rtrim, [new ConstExpr('fnord')]));
+		});
+
+		it('should parse binary function calls', function() {
+			expectParse("contains('fnord', 'o')", new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')]));
+		});
+
+		it('should throw for unknown functions', function() {
+			expectThrow("unknown(1, 2)", "Unknown function");
+			expectThrow("trimm(1, 2)", 'Did you mean "TRIM"');
+		});
+
+		it('should throw for unexpected tokens', function() {
+			expectThrow("contains[1, 2]", "Expected token");
+			expectThrow("contains(1: 2)", "Expected token");
+			expectThrow("contains(1, 2) }", "Expected token");
 		});
 	});
 });

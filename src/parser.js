@@ -22,6 +22,12 @@
 /**
  * Node imports
  */
+if (typeof Expr === 'undefined') {
+  Expr = require("./expr").Expr;
+}
+if (typeof FuncExpr === 'undefined') {
+  FuncExpr = require("./expr").FuncExpr;
+}
 
 /**
  * Parser - A class for tokenising and parsing Expr (and Aggr) nodes from strings.
@@ -30,7 +36,10 @@ class Parser {
 	constructor(text, options = {}) {
 		this.text = text;
 		this.alltokens = Parser.tokenise(text);
-		this.tokens = this.alltokens.filter(token => token.type > Parser.COMMENT);
+		this.tokens = this.alltokens
+			.filter(token => token.type > Parser.COMMENT)
+			.map(token => Object.assign({}, token, {text: token.text ? token.text.toLowerCase() : token.text}))
+		;
 		this.next = 0;
 	}
 };
@@ -137,6 +146,35 @@ Parser.prototype.expect_ = function(type, text) {
 	return token;
 }
 
+Parser.prototype.func_ = function(name) {
+	const func = Expr[name];
+	if (!func) {
+    	const candidates = Object.keys(Expr).filter(key => (key == key.toLowerCase()))
+    	const closest = Expr.topNLevenshtein(candidates, name.toLowerCase(), 1, 5);
+    	if (closest.length) {
+      	throw new SyntaxError("Unknown function: " + name +
+      		'. Did you mean "' + closest[0].candidate.toUpperCase() + '"?');
+      } else {
+      	throw new SyntaxError("Unknown function: '" + name);
+      }
+	}
+
+	const args = [];
+
+	this.expect_(Parser.SYMBOL, '(');
+	while (this.peek_().type != Parser.SYMBOL) {
+		args.push(this.expr_());
+		const token = this.peek_();
+		if (token.text == ')') {
+			break;
+		}
+		this.expect_(Parser.SYMBOL, ',');
+	}
+	this.expect_(Parser.SYMBOL, ')');
+
+	return new FuncExpr(func, args);
+}
+
 Parser.prototype.expr_ = function() {
 	var token = this.next_();
 	switch (token.type) {
@@ -146,6 +184,22 @@ Parser.prototype.expr_ = function() {
 		return new ConstExpr(JSON.parse(token.text));
 	case Parser.DATE:
 		return new ConstExpr(new Date(token.text.slice(1, -1)));
+	case Parser.IDENTIFIER:
+		switch (token.text) {
+		case 'null':
+			return new ConstExpr(null);
+		case 'true':
+			return new ConstExpr(true);
+		case 'false':
+			return new ConstExpr(false);
+		default:
+			if (this.peek_().type != Parser.SYMBOL) {
+				return new RefExpr(token.text);
+			}
+			return this.func_(token.text);
+		}
+	default:
+		throw SyntaxError('Unexpected token type ' +  token.type + ' ("' + token.text + '")');
 	}
 }
 
