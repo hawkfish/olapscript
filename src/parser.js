@@ -125,6 +125,44 @@ Parser.typeArticles = [
 	'the',
 ];
 
+Parser.precedence = [
+	'^',
+	'/',
+	'*',
+	'-',
+	'+',
+	'between',
+	'isnotdistinct',
+	'isdistinct',
+	'=',
+	'<',
+	'<=',
+	'>',
+	'>=',
+	'<>',
+	'and',
+	'or'
+].reduce(function(precedence, op, i) {precedence[op] = i; return precedence;}, {});
+
+Parser.infixFunc = [
+	Expr.power,
+	Expr.divide,
+	Expr.times,
+	Expr.minus,
+	Expr.plus,
+	Expr.between,
+	Expr.isnotdistinct,
+	Expr.isdistinct,
+	Expr.eq,
+	Expr.lt,
+	Expr.le,
+	Expr.gt,
+	Expr.ge,
+	Expr.ne,
+	Expr.and,
+	Expr.or
+];
+
 /**
  * readToken - Reads a token from the current position
  *
@@ -269,66 +307,6 @@ Parser.prototype.case_ = function() {
 	return new CaseExpr(args, expr);
 }
 
-Parser.prototype.between_ = function(expr) {
-	const args = [expr];
-
-	// BETWEEN <factor>
-	this.expect_(Parser.IDENTIFIER, 'between');
-	args.push(this.factor_());
-
-	// AND <factor>
-	this.expect_(Parser.IDENTIFIER, 'and');
-	args.push(this.factor_());
-
-	return new FuncExpr(Expr.between, args);
-}
-
-Parser.compareFuncs = {
-	'=':  Expr.eq,
-	'<>': Expr.ne,
-	'!=': Expr.ne,
-	'<':  Expr.lt,
-	'<=': Expr.le,
-	'>':  Expr.gt,
-	'>=': Expr.ge
-};
-
-Parser.prototype.compare_ = function(factor) {
-	const args = [factor];
-
-	const op = this.expect_(Parser.COMPARISON);
-	const func = Parser.compareFuncs[op.text];
-
-	args.push(this.factor_());
-
-	return new FuncExpr(func, args);
-};
-
-Parser.prototype.is_ = function(factor) {
-	const args = [factor];
-
-	// IS
-	this.expect_(Parser.IDENTIFIER, 'is');
-
-	// NOT
-	const negated = this.peek_(Parser.IDENTIFIER, 'not');
-	if (negated) {
-		this.next_();
-	}
-
-	const token = this.expect_(Parser.IDENTIFIER);
-	switch (token.text) {
-	case 'null':
-		return new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, args);
-	case 'distinct':
-		this.expect_(Parser.IDENTIFIER, 'from');
-		args.push(this.factor_());
-		return new FuncExpr(negated ? Expr.isnotdistinct : Expr.isdistinct, args);
-	default:
-		Parser.onUnexpected(token);
-	}
-}
-
 Parser.prototype.factor_ = function() {
 	var token = this.next_();
 	switch (token.type) {
@@ -387,25 +365,129 @@ Parser.prototype.factor_ = function() {
 	}
 }
 
+Parser.prototype.infix_ = function() {
+	const token = this.tokens[this.next];
+	switch (token.type) {
+	case Parser.IDENTIFIER:
+		switch (token.text) {
+		case 'between':
+		case 'is':
+		case 'and':
+		case 'or':
+			break;
+		default:
+			return null;
+		}
+	case Parser.COMPARISON:
+	case Parser.OPERATOR:
+		break;
+	default:
+		return null;
+	}
+
+	this.next_();
+
+	return token.text;
+}
+
 Parser.prototype.expr_ = function() {
 	const factor = this.factor_();
 
-	// Comparison
-	if (this.peek_(Parser.COMPARISON)) {
-		return this.compare_(factor);
+	const stack = [{op: null, args: [factor]}];
+
+	// Handle infix operations
+	while (true) {
+		var op = this.infix_();
+		if (!op) {
+			break;
+		}
+
+		// Finish parsing multi-token operations
+		if (op == 'is') {
+			// NOT
+			const negated = this.peek_(Parser.IDENTIFIER, 'not');
+			if (negated) {
+				this.next_();
+			}
+
+			const token = this.expect_(Parser.IDENTIFIER);
+			switch (token.text) {
+			case 'null': {
+				// NULL
+				//	Replace last argument with <arg> IS [NOT] NULL
+				const lhs = stack[stack.length - 1].args.pop();
+				stack[stack.length - 1].args.push(new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, [lhs]));
+				continue;
+			}
+			case 'distinct':
+				//	DISTINCT
+				this.expect_(Parser.IDENTIFIER, 'from');
+				op = negated ? 'isnotdistinct' : 'isdistinct';
+				break;
+			default:
+				Parser.onUnexpected(token);
+			}
+		}
+
+		// Replace unknown infix with the current one
+		if (!stack[stack.length - 1].op) {
+			stack[stack.length - 1].op = op;
+		}
+
+		// Get the RHS of the infix
+		const rhs = this.factor_();
+
+		// Handle the association precedence between the previous and current ops.
+		const prevOp = stack[stack.length - 1].op;
+		if (prevOp == 'between') {
+			// Special case <factor> BETWEEN <factor> AND <rhs>
+			switch (op) {
+			case 'between':
+			case 'and':
+				op = prevOp;
+				break;
+			default:
+				throw SyntaxError('Unexpected BETWEEN separator: ' + op);
+			}
+		}
+
+		// Associate arguments
+		if (prevOp == op) {
+			// Same infix op: extend top argument list
+			stack[stack.length-1].args.push(rhs);
+		} else if (Parser.precedence[prevOp] < Parser.precedence[op]) {
+			// Left Associative (e.g., a * b + rhs)
+			// 	Start a new argument list for the lower precedence op
+			//	by reducing the higher one to a function call
+			const top = stack.pop();
+			const lhs = new FuncExpr(Parser.infixFunc[Parser.precedence[prevOp]], top.args);
+			stack.push({op: op, args: [lhs, rhs]});
+
+			// Fuse nested identical ops on the top of the stack
+			while (stack.length > 1 && stack[ops.length - 2].op == op) {
+				const args = stack.pop().args;
+				stack[stack.length - 1].args.concat(args);
+			}
+		} else {
+			// Right Associative (e.g., a + b * rhs)
+			// 	Start a new argument list for the higher precedence op
+			const b = stack[stack.length - 1].args.pop();
+			stack.push({op: op, args: [b, rhs]});
+		}
 	}
 
-	// BETWEEN
-	if (this.peek_(Parser.IDENTIFIER, "between")) {
-		return this.between_(factor);
+	// Pop everything from the stack
+	while (stack.length > 1) {
+		const top = stack.pop();
+		stack[stack.length - 1].args.push(new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args));
 	}
 
-	// IS
-	if (this.peek_(Parser.IDENTIFIER, "is")) {
-		return this.is_(factor);
+	const top = stack.pop();
+	if (top.op) {
+		top.args = [new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args)];
 	}
 
-	return factor;
+	return top.args.pop();
 }
 
 Parser.prototype.parse = function() {

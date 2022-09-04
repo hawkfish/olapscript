@@ -311,7 +311,6 @@ describe('Parser', function() {
 			expectParse('"importance" >= 1', new FuncExpr(Expr.ge, [ref, one]));
 			expectParse('"importance" < 1', new FuncExpr(Expr.lt, [ref, one]));
 			expectParse('"importance" <= 1', new FuncExpr(Expr.le, [ref, one]));
-			expectParse('"importance" != 1', new FuncExpr(Expr.ne, [ref, one]));
 			expectParse('"importance" <> 1', new FuncExpr(Expr.ne, [ref, one]));
 		});
 
