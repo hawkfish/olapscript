@@ -97,14 +97,19 @@ Expr.topNLevenshtein = function(strings, target, n = 5, threshold = 5) {
  * @param {Array} args - The input expressions for the function call.
  */
 class FuncExpr extends Expr {
-  constructor(func, args) {
+  constructor(func, args, fname) {
     super('function');
     this.func = func;
     this.args = args;
+    this.fname = fname || 'FuncExpr';
   }
 
+	toString() {
+		return this.fname.toUpperCase() + "(" + this.args.map(arg => String(arg)).join(", ") + ")";
+	}
+
   alias() {
-    return this.func.name + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
+    return this.fname + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
   }
 }
 
@@ -142,11 +147,7 @@ class RefExpr extends Expr {
   }
 
   toString() {
-  	if (this.reference.includes(' ')) {
-    	return '"' + this.reference + '"';
-    } else {
-    	return this.reference;
-    }
+  	return '"' + this.reference.replace(/"/g, '""') + '"';
   }
 
   alias() {
@@ -178,9 +179,19 @@ class ConstExpr extends Expr {
     super('constant');
     this.constant = constant;
     this.datatype = typeof constant;
+    if (constant instanceof Date) {
+    	this.datatype = 'date';
+    }
   }
 
   toString() {
+  	switch (this.datatype) {
+  	case 'string':
+  		return "'" + this.reference.replace(/'/g, "''") + "'";
+  	case 'date':
+  		return '#' + this.constant.toISOString() + '#';
+		}
+
     return String(this.constant);
   }
 
@@ -211,16 +222,16 @@ class CaseExpr extends Expr {
 	}
 
 	toString() {
-		var result = 'case';
+		var result = 'CASE';
 		if (this.expr) {
-			result += ' ' + this.expr.alias();
+			result += ' ' + this.expr.toString();
 		}
 		var a = 0;
 		while (a < this.args.length - 1) {
-			result += ' when ' + this.args[a++].alias();
-			result += ' then ' + this.args[a++].alias();
+			result += ' WHEN ' + this.args[a++].toString();
+			result += ' THEN ' + this.args[a++].toString();
 		}
-		result += ' else ' + this.args[a++].alias() + ' end';
+		result += ' ELSE ' + this.args[a++].toString() + ' END';
 
 		return result;
 	}

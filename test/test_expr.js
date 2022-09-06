@@ -26,6 +26,7 @@ describe('Expression nodes', function() {
 			expect(e.type).to.equal('constant');
 			expect(e.constant).to.equal(setup);
 			expect(e.datatype).to.equal(datatype);
+			return e;
     };
     const expectAlias = function(setup, expected) {
 			expect(new ConstExpr(setup).alias()).to.equal(expected);
@@ -55,6 +56,10 @@ describe('Expression nodes', function() {
 			});
 			it('should store a numeric constant', function() {
 				expectConstructor(3.15149, 'number');
+			});
+			it('should store a Date constant', function() {
+				const expr = expectConstructor(new Date(Date.UTC(2022, 8, 5, 17, 42, 40)), 'date');
+				expect(expr.toString()).to.equal('#2022-09-05T17:42:40.000Z#');
 			});
 			it('should store an Array constant', function() {
 				expectConstructor([0, 1, 2, 3], 'object');
@@ -193,15 +198,15 @@ describe('Expression nodes', function() {
 		});
 		describe('alias', function() {
 			it('should alias a nullary function', function() {
-				const e = new FuncExpr(nullary, []);
+				const e = new FuncExpr(nullary, [], "nullary");
 				expect(e.alias()).to.equal('nullary()');
 			});
 			it('should alias a unary function', function() {
-				const e = new FuncExpr(unary, [new ConstExpr(1)]);
+				const e = new FuncExpr(unary, [new ConstExpr(1)], "unary");
 				expect(e.alias()).to.equal('unary(1)');
 			});
 			it('should alias a binary function', function() {
-				const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
+				const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)], "binary");
 				expect(e.alias()).to.equal('binary(7, 4)');
 			});
 		});
@@ -215,7 +220,7 @@ describe('Expression nodes', function() {
 				expectEvaluate(e, Array(count).fill(unary(1)));
 			});
 			it('should evaluate a binary function', function() {
-				const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)]);
+				const e = new FuncExpr(binary, [new ConstExpr(7), new ConstExpr(4)], "binary");
 				expectEvaluate(e, Array(count).fill(binary(7, 4)));
 			});
 		});
@@ -238,7 +243,7 @@ describe('Expression nodes', function() {
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
-				expect(setup.toString()).to.equal('case when whens then thens else elses end');
+				expect(setup.toString()).to.equal('CASE WHEN "whens" THEN "thens" ELSE "elses" END');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -255,7 +260,7 @@ describe('Expression nodes', function() {
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
-				expect(setup.toString()).to.equal('case when whens then thens else null end');
+				expect(setup.toString()).to.equal('CASE WHEN "whens" THEN "thens" ELSE null END');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -279,7 +284,8 @@ describe('Expression nodes', function() {
 				expect(setup.args).to.be.an('array').lengthOf(5);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
-				expect(setup.toString()).to.equal('case when whens1 then thens1 when whens2 then thens2 else elses end');
+				expect(setup.toString()).to
+					.equal('CASE WHEN "whens1" THEN "thens1" WHEN "whens2" THEN "thens2" ELSE "elses" END');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -301,7 +307,7 @@ describe('Expression nodes', function() {
 				expect(setup.args).to.be.an('array').lengthOf(5);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
-				expect(setup.toString()).to.equal('case when whens1 then thens1 when whens2 then thens2 else null end');
+				expect(setup.toString()).to.equal('CASE WHEN "whens1" THEN "thens1" WHEN "whens2" THEN "thens2" ELSE null END');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
@@ -322,12 +328,14 @@ describe('Expression nodes', function() {
 						} else {
 							return "Pravda";
 						}
-					}, [new RefExpr("rowid")]);
+					},
+					[new RefExpr("rowid")],
+					"THROW");
 				const setup = new CaseExpr([new RefExpr("whens"), thens, new RefExpr("elses")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
-				expect(setup.toString()).to.equal('case when whens then (rowid) else elses end');
+				expect(setup.toString()).to.equal('CASE WHEN "whens" THEN THROW("rowid") ELSE "elses" END');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);

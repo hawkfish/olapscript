@@ -44,7 +44,13 @@ class Parser {
 		this.alltokens = Parser.tokenise(text);
 		this.tokens = this.alltokens
 			.filter(token => token.type > Parser.COMMENT)
-			.map(token => Object.assign({}, token, {text: token.text ? token.text.toLowerCase() : token.text}))
+			.map(function(token) {
+				var text = token.text;
+				if (text && token.type == Parser.IDENTIFIER) {
+					text = text.toLowerCase();
+				}
+				return  Object.assign({}, token, {text: text});
+			})
 		;
 		this.next = 0;
 	}
@@ -275,7 +281,7 @@ Parser.prototype.func_ = function(name) {
 	}
 	this.expect_(Parser.SYMBOL, ')');
 
-	return new FuncExpr(func, args);
+	return new FuncExpr(func, args, name);
 }
 
 Parser.prototype.case_ = function() {
@@ -330,7 +336,7 @@ Parser.prototype.factor_ = function() {
 		case 'false':
 			return new ConstExpr(false);
 		case 'not':
-			return new FuncExpr(Expr.not, [this.expr_()]);
+			return new FuncExpr(Expr.not, [this.expr_()], token.text);
 		case 'case':
 			return this.case_();
 		default:
@@ -353,7 +359,7 @@ Parser.prototype.factor_ = function() {
 		switch (token.text) {
 		case '-':
 			// Unary minus
-			return new FuncExpr(Expr.negate, [this.expr_()]);
+			return new FuncExpr(Expr.negate, [this.expr_()], token.text);
 		case '+':
 			// Unary plus
 			return this.expr_();
@@ -390,6 +396,10 @@ Parser.prototype.infix_ = function() {
 	return token.text;
 }
 
+function logStack(stack) {
+	stack.forEach((entry, e) => console.log(e, entry.op, entry.args.map(arg => '' + arg)));
+}
+
 Parser.prototype.expr_ = function() {
 	const factor = this.factor_();
 
@@ -416,7 +426,8 @@ Parser.prototype.expr_ = function() {
 				// NULL
 				//	Replace last argument with <arg> IS [NOT] NULL
 				const lhs = stack[stack.length - 1].args.pop();
-				stack[stack.length - 1].args.push(new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, [lhs]));
+				op = negated ? 'isnotnull' : 'isnull';
+				stack[stack.length - 1].args.push(new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, [lhs], op));
 				continue;
 			}
 			case 'distinct':
@@ -456,17 +467,17 @@ Parser.prototype.expr_ = function() {
 			// Same infix op: extend top argument list
 			stack[stack.length-1].args.push(rhs);
 		} else if (Parser.precedence[prevOp] < Parser.precedence[op]) {
-			// Left Associative (e.g., a * b + rhs)
+			// Left Associative (e.g., a * b + c)
 			// 	Start a new argument list for the lower precedence op
 			//	by reducing the higher one to a function call
 			const top = stack.pop();
-			const lhs = new FuncExpr(Parser.infixFunc[Parser.precedence[prevOp]], top.args);
-			stack.push({op: op, args: [lhs, rhs]});
+			const ab = new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op);
+			stack.push({op: op, args: [ab, rhs]});
 
 			// Fuse nested identical ops on the top of the stack
-			while (stack.length > 1 && stack[ops.length - 2].op == op) {
+			while (stack.length > 1 && stack[stack.length - 2].op == op) {
 				const args = stack.pop().args;
-				stack[stack.length - 1].args.concat(args);
+				stack[stack.length - 1].args.push(...args);
 			}
 		} else {
 			// Right Associative (e.g., a + b * rhs)
@@ -479,12 +490,12 @@ Parser.prototype.expr_ = function() {
 	// Pop everything from the stack
 	while (stack.length > 1) {
 		const top = stack.pop();
-		stack[stack.length - 1].args.push(new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args));
+		stack[stack.length - 1].args.push(new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op));
 	}
 
 	const top = stack.pop();
 	if (top.op) {
-		top.args = [new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args)];
+		top.args = [new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op)];
 	}
 
 	return top.args.pop();

@@ -105,7 +105,7 @@ describe('Parser', function() {
 		const CaseExpr = expr.CaseExpr;
 
 		const expectExpr = function(expected, actual, msg) {
-			expect(actual.type, msg).to.equal(expected.type);
+			expect(actual.type, '' + expected).to.equal(expected.type);
 			switch (expected.type) {
 			case 'constant':
 				expect(actual.constant).to.deep.equal(expected.constant);
@@ -147,6 +147,7 @@ describe('Parser', function() {
 		it('should parse strings', function() {
 			expectParse("''", new ConstExpr(""));
 			expectParse("'string'", new ConstExpr("string"));
+			expectParse("'Mixed Case'", new ConstExpr("Mixed Case"));
 			expectParse("'first''second'", new ConstExpr("first'second"));
 			expectParse("'first''second''third'", new ConstExpr("first'second'third"));
 			expectParse("''''", new ConstExpr("'"));
@@ -155,7 +156,7 @@ describe('Parser', function() {
 
 		it('should parse references', function() {
 			expectParse('"column"', new RefExpr('column'));
-			expectParse('"column name"', new RefExpr('column name'));
+			expectParse('"Column Name"', new RefExpr('Column Name'));
 			expectParse('"column ""name"" with quotes"', new RefExpr('column "name" with quotes'));
 			expectThrow('""', "Empty identifier");
 		});
@@ -327,6 +328,23 @@ describe('Parser', function() {
 			expectParse('"importance" IS DISTINCT FROM 1', new FuncExpr(Expr.isdistinct, [ref, one]));
 			expectParse('"importance" IS NOT DISTINCT FROM 1', new FuncExpr(Expr.isnotdistinct, [ref, one]));
 			expectThrow('"importance" IS DISTINCT 1', "Expected 'from' but found '1' at position 25"	);
+		});
+
+		it('should parse AND chains', function() {
+			const setup = `"firstName" = 'fname'
+			AND "lastName" = 'lname'
+			AND "email" = 'email@example.com'
+			AND "date" = #2022-09-05T17:42:40.000Z#
+			AND "invalidTimestamp" IS NULL
+			`;
+			const expected = new FuncExpr(Expr.and, [
+  			new FuncExpr(Expr.eq, [new RefExpr("firstName"), new ConstExpr('fname')], '='),
+  			new FuncExpr(Expr.eq, [new RefExpr("lastName"), new ConstExpr('lname')], '='),
+  			new FuncExpr(Expr.eq, [new RefExpr("email"), new ConstExpr('email@example.com')], '='),
+  			new FuncExpr(Expr.eq, [new RefExpr("date"), new ConstExpr(new Date(Date.UTC(2022, 8, 5, 17, 42, 40)))], '='),
+  			new FuncExpr(Expr.isnull, [new RefExpr('invalidTimestamp')], 'isnull')
+			]);
+			expectParse(setup, expected);
 		});
 
 		it('should throw for unexpected tokens', function() {
