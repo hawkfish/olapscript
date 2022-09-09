@@ -268,14 +268,25 @@ class StringAgg extends ValueAggr {
 	}
 };
 
+Aggr.countstar = CountStar;
+Aggr.count = Count;
+
+Aggr.sum = Sum;
+Aggr.avg = Avg;
+
+Aggr.min = Min;
+Aggr.max = Max;
+Aggr.first = First;
+Aggr.last = Last;
+
+Aggr.arrayagg = ArrayAgg;
+Aggr.stringagg = StringAgg;
+
 /**
  * Node exports
  */
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count,
-    Sum, Avg,
-    Min, Max, First, Last,
-    StringAgg, ArrayAgg
+    Aggr
   };
 };
