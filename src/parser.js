@@ -515,6 +515,30 @@ Parser.prototype.parse = function() {
 	return expr;
 }
 
+Parser.prototype.select_ = function() {
+	const expr = this.expr_();
+	if (!this.peek_(Parser.IDENTIFIER, 'as')) {
+		return {expr: expr, as: expr.alias()};
+	}
+
+	this.next_();
+	if (this.peek_(Parser.REFERENCE)) {
+		return {expr: expr, as: this.factor_().reference};
+	}
+
+	return {expr: expr, as: this.expect_(Parser.IDENTIFIER).text};
+}
+
+Parser.prototype.selects = function() {
+	const result = [this.select_()];
+	while (this.peek_(Parser.SYMBOL, ',')) {
+		this.next_();
+		result.push(this.select_());
+	}
+	this.expect_(Parser.EOT);
+	return result;
+}
+
 /**
  * Node exports
  */

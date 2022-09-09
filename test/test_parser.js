@@ -374,4 +374,31 @@ describe('Parser', function() {
 			expectThrow("(54(", "Expected ')' but found '(' at position 3");
 		});
 	});
+
+	describe('selects', function() {
+		const Expr = expr.Expr;
+		const FuncExpr = expr.FuncExpr;
+		const CaseExpr = expr.CaseExpr;
+		const RefExpr = expr.RefExpr;
+
+		const expectSelects = function(setup, expected) {
+			const parser = new Parser(setup);
+			const actual = parser.selects(setup)
+				.map(select => select.expr.toString() + ' AS ' + RefExpr.encode(select.as))
+				.join(", ")
+			;
+			expect(actual).to.equal(expected);
+		}
+
+		it('should parse single expressions', function() {
+			expectSelects('"a"', '"a" AS "a"');
+			expectSelects('"a" AS "b"', '"a" AS "b"');
+			expectSelects('"a" AS b', '"a" AS "b"');
+		});
+
+		it('should parse multiple expressions', function() {
+			expectSelects('"a", 1 AS one', '"a" AS "a", 1 AS "one"');
+			expectSelects('ltrim("a"), 1 AS one', 'LTRIM("a") AS "ltrim(a)", 1 AS "one"');
+		});
+	});
 });
