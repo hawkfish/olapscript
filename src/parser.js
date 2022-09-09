@@ -446,10 +446,10 @@ Parser.prototype.expr_ = function() {
 		}
 
 		// Get the RHS of the infix
-		const rhs = this.factor_();
+		const c = this.factor_();
 
 		// Handle the association precedence between the previous and current ops.
-		const prevOp = stack[stack.length - 1].op;
+		var prevOp = stack[stack.length - 1].op;
 		if (prevOp == 'between') {
 			// Special case <factor> BETWEEN <factor> AND <rhs>
 			switch (op) {
@@ -463,27 +463,35 @@ Parser.prototype.expr_ = function() {
 		}
 
 		// Associate arguments
-		if (prevOp == op) {
-			// Same infix op: extend top argument list
-			stack[stack.length-1].args.push(rhs);
-		} else if (Parser.precedence[prevOp] < Parser.precedence[op]) {
-			// Left Associative (e.g., a * b + c)
-			// 	Start a new argument list for the lower precedence op
-			//	by reducing the higher one to a function call
+
+		// Left Associative (e.g., a * b + c)
+		// 	Pop the top of the stack and combine it into a single argument for the previous operand
+		while (Parser.precedence[prevOp] < Parser.precedence[op]) {
 			const top = stack.pop();
 			const ab = new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op);
-			stack.push({op: op, args: [ab, rhs]});
-
-			// Fuse nested identical ops on the top of the stack
-			while (stack.length > 1 && stack[stack.length - 2].op == op) {
-				const args = stack.pop().args;
-				stack[stack.length - 1].args.push(...args);
+			if (stack.length > 1) {
+				stack[stack.length-1].args.push(ab);
+			} else {
+				stack.push({op: op, args: [ab]})
 			}
+			prevOp = stack[stack.length - 1].op;
+		}
+
+		// Fuse nested identical ops on the top of the stack
+		while (stack.length > 1 && stack[stack.length - 2].op == op) {
+			const args = stack.pop().args;
+			stack[stack.length - 1].args.push(...args);
+		}
+
+		if (prevOp == op) {
+			// Same infix op (e.g., a + b + c)
+			//	Extend top argument list
+			stack[stack.length-1].args.push(c);
 		} else {
-			// Right Associative (e.g., a + b * rhs)
+			// Right Associative (e.g., a + b * c)
 			// 	Start a new argument list for the higher precedence op
 			const b = stack[stack.length - 1].args.pop();
-			stack.push({op: op, args: [b, rhs]});
+			stack.push({op: op, args: [b, c]});
 		}
 	}
 

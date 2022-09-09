@@ -187,7 +187,7 @@ class ConstExpr extends Expr {
   toString() {
   	switch (this.datatype) {
   	case 'string':
-  		return "'" + this.reference.replace(/'/g, "''") + "'";
+  		return "'" + this.constant.replace(/'/g, "''") + "'";
   	case 'date':
   		return '#' + this.constant.toISOString() + '#';
 		}

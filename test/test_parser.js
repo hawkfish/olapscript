@@ -105,7 +105,7 @@ describe('Parser', function() {
 		const CaseExpr = expr.CaseExpr;
 
 		const expectExpr = function(expected, actual, msg) {
-			expect(actual.type, '' + expected).to.equal(expected.type);
+			expect(actual.type, expected.toString()).to.equal(expected.type);
 			switch (expected.type) {
 			case 'constant':
 				expect(actual.constant).to.deep.equal(expected.constant);
@@ -114,9 +114,9 @@ describe('Parser', function() {
 				expect(actual.reference).to.equal(expected.reference);
 				break;
 			case 'function':
-				expect(actual.func.name).to.equal(expected.func.name);
-				expect(actual.args.length).to.equal(expected.args.length);
-				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], msg));
+				expect(actual.fname).to.equal(expected.fname);
+				expect(actual.args.length, actual.toString()).to.equal(expected.args.length);
+				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], expected.fname));
 				break;
 			case 'case':
 				if (expected.expr == null) {
@@ -198,9 +198,9 @@ describe('Parser', function() {
 			;
 			const importance = new RefExpr("importance");
 			const expected = new CaseExpr([
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')]), new ConstExpr(1),
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')]), new ConstExpr(2),
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')]), new ConstExpr(3),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')], 'contains'), new ConstExpr(1),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')], 'contains'), new ConstExpr(2),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')], 'contains'), new ConstExpr(3),
 				new ConstExpr(4)
 			]);
 			expectParse(setup, expected);
@@ -215,9 +215,9 @@ describe('Parser', function() {
 			;
 			const importance = new RefExpr("importance");
 			const expected = new CaseExpr([
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')]), new ConstExpr(1),
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')]), new ConstExpr(2),
-				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')]), new ConstExpr(3),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')], 'contains'), new ConstExpr(1),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')], 'contains'), new ConstExpr(2),
+				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')], 'contains'), new ConstExpr(3),
 				new ConstExpr(null)
 			]);
 			expectParse(setup, expected);
@@ -259,22 +259,23 @@ describe('Parser', function() {
 		});
 
 		it('should parse nullary function calls', function() {
-			expectParse("now()", new FuncExpr(Expr.now, []));
-			expectParse("NOW()", new FuncExpr(Expr.now, []));
+			expectParse("now()", new FuncExpr(Expr.now, [], 'now'));
+			expectParse("NOW()", new FuncExpr(Expr.now, [], 'now'));
 		});
 
 		it('should parse unary function calls', function() {
-			expectParse("ltrim('fnord')", new FuncExpr(Expr.ltrim, [new ConstExpr('fnord')]));
-			expectParse("RTrim('fnord')", new FuncExpr(Expr.rtrim, [new ConstExpr('fnord')]));
+			expectParse("ltrim('fnord')", new FuncExpr(Expr.ltrim, [new ConstExpr('fnord')], 'ltrim'));
+			expectParse("RTrim('fnord')", new FuncExpr(Expr.rtrim, [new ConstExpr('fnord')], 'rtrim'));
 		});
 
 		it('should parse binary function calls', function() {
-			expectParse("contains('fnord', 'o')", new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')]));
+			expectParse("contains('fnord', 'o')",
+				new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')], 'contains'));
 		});
 
 		it('should parse function calls with parenthesised arguments', function() {
 			const setup = "contains(('fnord'), 'o')"
-			const expected = new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')])
+			const expected = new FuncExpr(Expr.contains, [new ConstExpr('fnord'), new ConstExpr('o')], 'contains')
 			expectParse(setup, expected);
 		});
 
@@ -284,22 +285,23 @@ describe('Parser', function() {
 		});
 
 		it('should parse prefix functions', function() {
-			expectParse("NOT true", new FuncExpr(Expr.not, [new ConstExpr(true)]));
+			expectParse("NOT true", new FuncExpr(Expr.not, [new ConstExpr(true)], 'not'));
 			const cost = new RefExpr("cost");
-			expectParse('- "cost"', new FuncExpr(Expr.negate, [cost]));
+			expectParse('- "cost"', new FuncExpr(Expr.negate, [cost], '-'));
 			expectParse('+ "cost"', cost);
 		});
 
 		it('should parse parenthesised expressions', function() {
-			expectParse("(NOT true)", new FuncExpr(Expr.not, [new ConstExpr(true)]));
-			expectParse("((NOT false))", new FuncExpr(Expr.not, [new ConstExpr(false)]));
+			expectParse("(NOT true)", new FuncExpr(Expr.not, [new ConstExpr(true)], 'not'));
+			expectParse("((NOT false))", new FuncExpr(Expr.not, [new ConstExpr(false)], 'not'));
 		});
 
 		it('should parse BETWEEN', function() {
 			const setup = '"importance" BETWEEN 0 AND 3';
 			const expected = new FuncExpr(
 				Expr.between,
-				[new RefExpr("importance"), new ConstExpr(0), new ConstExpr(3)]
+				[new RefExpr("importance"), new ConstExpr(0), new ConstExpr(3)],
+				'between'
 			);
 			expectParse(setup, expected);
 		});
@@ -307,26 +309,26 @@ describe('Parser', function() {
 		it('should parse comparisons', function() {
 			const ref = new RefExpr("importance");
 			const one = new ConstExpr(1);
-			expectParse('"importance" = 1', new FuncExpr(Expr.eq, [ref, one]));
-			expectParse('"importance" > 1', new FuncExpr(Expr.gt, [ref, one]));
-			expectParse('"importance" >= 1', new FuncExpr(Expr.ge, [ref, one]));
-			expectParse('"importance" < 1', new FuncExpr(Expr.lt, [ref, one]));
-			expectParse('"importance" <= 1', new FuncExpr(Expr.le, [ref, one]));
-			expectParse('"importance" <> 1', new FuncExpr(Expr.ne, [ref, one]));
+			expectParse('"importance" = 1', new FuncExpr(Expr.eq, [ref, one], '='));
+			expectParse('"importance" > 1', new FuncExpr(Expr.gt, [ref, one], '>'));
+			expectParse('"importance" >= 1', new FuncExpr(Expr.ge, [ref, one], '>='));
+			expectParse('"importance" < 1', new FuncExpr(Expr.lt, [ref, one], '<'));
+			expectParse('"importance" <= 1', new FuncExpr(Expr.le, [ref, one], '<='));
+			expectParse('"importance" <> 1', new FuncExpr(Expr.ne, [ref, one], '<>'));
 		});
 
 		it('should parse IS [NOT] NULL', function() {
 			const ref = new RefExpr("importance");
-			expectParse('"importance" IS NULL', new FuncExpr(Expr.isnull, [ref]));
-			expectParse('"importance" IS NOT NULL', new FuncExpr(Expr.isnull, [ref]));
+			expectParse('"importance" IS NULL', new FuncExpr(Expr.isnull, [ref], 'isnull'));
+			expectParse('"importance" IS NOT NULL', new FuncExpr(Expr.isnull, [ref], 'isnotnull'));
 			expectThrow('"importance" IS DEAD', 'Unexpected identifier ("dead") at position 16');
 		});
 
 		it('should parse IS [NOT] DISTINCT FROM', function() {
 			const ref = new RefExpr("importance");
 			const one = new ConstExpr(1);
-			expectParse('"importance" IS DISTINCT FROM 1', new FuncExpr(Expr.isdistinct, [ref, one]));
-			expectParse('"importance" IS NOT DISTINCT FROM 1', new FuncExpr(Expr.isnotdistinct, [ref, one]));
+			expectParse('"importance" IS DISTINCT FROM 1', new FuncExpr(Expr.isdistinct, [ref, one], 'isdistinct'));
+			expectParse('"importance" IS NOT DISTINCT FROM 1', new FuncExpr(Expr.isnotdistinct, [ref, one], 'isnotdistinct'));
 			expectThrow('"importance" IS DISTINCT 1', "Expected 'from' but found '1' at position 25"	);
 		});
 
@@ -338,12 +340,29 @@ describe('Parser', function() {
 			AND "invalidTimestamp" IS NULL
 			`;
 			const expected = new FuncExpr(Expr.and, [
-  			new FuncExpr(Expr.eq, [new RefExpr("firstName"), new ConstExpr('fname')], '='),
-  			new FuncExpr(Expr.eq, [new RefExpr("lastName"), new ConstExpr('lname')], '='),
-  			new FuncExpr(Expr.eq, [new RefExpr("email"), new ConstExpr('email@example.com')], '='),
-  			new FuncExpr(Expr.eq, [new RefExpr("date"), new ConstExpr(new Date(Date.UTC(2022, 8, 5, 17, 42, 40)))], '='),
-  			new FuncExpr(Expr.isnull, [new RefExpr('invalidTimestamp')], 'isnull')
-			]);
+					new FuncExpr(Expr.eq, [new RefExpr("firstName"), new ConstExpr('fname')], '='),
+					new FuncExpr(Expr.eq, [new RefExpr("lastName"), new ConstExpr('lname')], '='),
+					new FuncExpr(Expr.eq, [new RefExpr("email"), new ConstExpr('email@example.com')], '='),
+					new FuncExpr(Expr.eq, [new RefExpr("date"), new ConstExpr(new Date(Date.UTC(2022, 8, 5, 17, 42, 40)))], '='),
+					new FuncExpr(Expr.isnull, [new RefExpr('invalidTimestamp')], 'isnull')
+				],
+				'and');
+			expectParse(setup, expected);
+		});
+
+		it('should parse multi-level associativity', function() {
+			const setup = `"a" AND "b" + "c" * "d" AND "e"`;
+			const expected = new FuncExpr(Expr.and, [
+				new RefExpr("a"),
+				new FuncExpr(Expr.plus, [
+					new RefExpr("b"),
+					new FuncExpr(Expr.times, [
+						new RefExpr("c"),
+						new RefExpr("d")
+					], '*')
+				], '+'),
+				new RefExpr("e")
+			], 'and');
 			expectParse(setup, expected);
 		});
 
