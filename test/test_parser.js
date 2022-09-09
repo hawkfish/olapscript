@@ -377,8 +377,6 @@ describe('Parser', function() {
 
 	describe('selects', function() {
 		const Expr = expr.Expr;
-		const FuncExpr = expr.FuncExpr;
-		const CaseExpr = expr.CaseExpr;
 		const RefExpr = expr.RefExpr;
 
 		const expectSelects = function(setup, expected) {
@@ -399,6 +397,48 @@ describe('Parser', function() {
 		it('should parse multiple expressions', function() {
 			expectSelects('"a", 1 AS one', '"a" AS "a", 1 AS "one"');
 			expectSelects('ltrim("a"), 1 AS one', 'LTRIM("a") AS "ltrim(a)", 1 AS "one"');
+		});
+	});
+
+	describe('orders', function() {
+		const expectOrders = function(setup, expected) {
+			const parser = new Parser(setup);
+			const actual = parser.orders(setup)
+				.map(order => order.expr.toString()
+									  + (order.asc ? " ASC" : " DESC")
+									  + " NULLS " + (order.nullsFirst ? "FIRST" : "LAST")
+				 )
+				.join(", ")
+			;
+			expect(actual).to.equal(expected);
+		}
+
+		const expectThrow = function(setup, expected) {
+			const parser = new Parser(setup);
+			expect(parser.orders.bind(parser)).to.throw(SyntaxError, expected);
+		}
+
+		it('should parse single order by', function() {
+			expectOrders('"a"', '"a" ASC NULLS FIRST');
+			expectOrders('"a" ASC', '"a" ASC NULLS FIRST');
+			expectOrders('"a" ASC NULLS FIRST', '"a" ASC NULLS FIRST');
+			expectOrders('a ASC NULLS FIRST', '"a" ASC NULLS FIRST');
+			expectOrders('a DESC NULLS FIRST', '"a" DESC NULLS FIRST');
+			expectOrders('a DESC NULLS LAST', '"a" DESC NULLS LAST');
+			expectOrders('a  NULLS FIRST ASC', '"a" ASC NULLS FIRST');
+			expectOrders('a  NULLS LAST DESC', '"a" DESC NULLS LAST');
+		});
+
+		it('should parse multiple order bys', function() {
+			expectOrders('"a", b DESC', '"a" ASC NULLS FIRST, "b" DESC NULLS FIRST');
+			expectOrders('"a", b DESC, c NULLS LAST',
+				'"a" ASC NULLS FIRST, "b" DESC NULLS FIRST, "c" ASC NULLS LAST');
+		});
+
+		it('should throw on malformed order bys', function() {
+			expectThrow('"a" fnord', 'Unexpected ORDER BY qualifier');
+			expectThrow('"a" NULLS WHEREVER', 'Unexpected NULLS qualifier');
+			expectThrow('a: b', 'Expected the end but found a symbol at position 1');
 		});
 	});
 });

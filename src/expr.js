@@ -147,7 +147,7 @@ class RefExpr extends Expr {
   }
 
   toString() {
-  	return '"' + this.reference.replace(/"/g, '""') + '"';
+  	return RefExpr.encode(this.reference);
   }
 
   alias() {
@@ -167,6 +167,10 @@ class RefExpr extends Expr {
     }
     return result;
   }
+}
+
+RefExpr.encode = function(r) {
+  	return '"' + r.replace(/"/g, '""') + '"';
 }
 
 /**

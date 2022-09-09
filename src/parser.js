@@ -539,6 +539,46 @@ Parser.prototype.selects = function() {
 	return result;
 }
 
+Parser.prototype.order_ = function() {
+	const result = {expr: this.expr_(), asc: true, nullsFirst: true};
+
+	// ASC/DESC or NULLS FIRST/LAST
+	while (this.peek_(Parser.IDENTIFIER)) {
+		var token = this.expect_(Parser.IDENTIFIER);
+		switch (token.text) {
+		case 'asc':
+		case 'desc':
+			result.asc = (token.text == 'asc');
+			break;
+		case 'nulls':
+			token = this.expect_(Parser.IDENTIFIER);
+			switch (token.text) {
+			case 'first':
+			case 'last':
+				result.nullsFirst = (token.text == 'first');
+				break;
+			default:
+				throw SyntaxError('Unexpected NULLS qualifier: ' + token.text);
+			}
+			break;
+		default:
+			throw SyntaxError('Unexpected ORDER BY qualifier: ' + token.text);
+		}
+	}
+
+	return result;
+}
+
+Parser.prototype.orders = function() {
+	const result = [this.order_()];
+	while (this.peek_(Parser.SYMBOL, ',')) {
+		this.next_();
+		result.push(this.order_());
+	}
+	this.expect_(Parser.EOT);
+	return result;
+}
+
 /**
  * Node exports
  */
