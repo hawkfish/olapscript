@@ -368,7 +368,7 @@ describe('Parser', function() {
 
 		it('should throw for unexpected tokens', function() {
 			expectThrow("contains[1, 2]", "Expected the end but found a symbol at position 8");
-			expectThrow("contains(1: 2)", 'Unexpected symbol (":") at position 10');
+			expectThrow("contains(1: 2)", "Expected ')' but found ':' at position 10");
 			expectThrow("contains(1, 2) }", "Expected the end but found a symbol at position 15");
 			expectThrow("}", 'Unexpected symbol ("}") at position 0');
 			expectThrow("(54(", "Expected ')' but found '(' at position 3");
@@ -439,6 +439,39 @@ describe('Parser', function() {
 			expectThrow('"a" fnord', 'Unexpected ORDER BY qualifier');
 			expectThrow('"a" NULLS WHEREVER', 'Unexpected NULLS qualifier');
 			expectThrow('a: b', 'Expected the end but found a symbol at position 1');
+		});
+	});
+
+	describe('aggregates', function() {
+		const expectAggrs = function(setup, expected) {
+			const parser = new Parser(setup);
+			const actual = parser.aggrs()
+				.map(aggr => aggr.func.toString() + ' AS ' + RefExpr.encode(aggr.as))
+				.join(", ")
+			;
+			expect(actual).to.equal(expected);
+		}
+		const expectThrow = function(setup, expected) {
+			const parser = new Parser(setup);
+			expect(parser.aggrs.bind(parser)).to.throw(SyntaxError, expected);
+		}
+
+		it('should parse single aggregate', function() {
+			expectAggrs('SUM("a")', 'SUM("a") AS "sum"');
+			expectAggrs('COUNT("a")', 'COUNT("a") AS "count"');
+			expectAggrs('COUNTSTAR()', 'COUNTSTAR() AS "countstar"');
+			expectAggrs('COUNTSTAR() as n', 'COUNTSTAR() AS "n"');
+		});
+
+		it('should parse multiple aggregates', function() {
+			expectAggrs(
+				'MIN("a") as min_a, avg("a") as avg_a, MAX(a) as max_a',
+				'MIN("a") AS "min_a", AVG("a") AS "avg_a", MAX("a") AS "max_a"');
+		});
+
+		it('should throw on malformed aggregates', function() {
+			expectThrow('fnord("a")', 'Unknown aggregate: fnord. Did you mean "FIRST"');
+			expectThrow('first("a", )', 'Unexpected symbol (")") at position 11');
 		});
 	});
 });

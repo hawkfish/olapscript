@@ -34,6 +34,9 @@ if (typeof RefExpr === 'undefined') {
 if (typeof CaseExpr === 'undefined') {
   CaseExpr = require("./expr").CaseExpr;
 }
+if (typeof Aggr === 'undefined') {
+  Aggr = require("./aggr").Aggr;
+}
 
 /**
  * Parser - A class for tokenising and parsing Expr (and Aggr) nodes from strings.
@@ -257,6 +260,22 @@ Parser.prototype.expect_ = function(type, text) {
 	return token;
 }
 
+Parser.prototype.args_ = function() {
+	const args = [];
+
+	this.expect_(Parser.SYMBOL, '(');
+	if (!this.peek_(Parser.SYMBOL, ')')) {
+		args.push(this.expr_());
+		while (this.peek_(Parser.SYMBOL, ',')) {
+			this.expect_(Parser.SYMBOL, ',');
+			args.push(this.expr_());
+		}
+	}
+	this.expect_(Parser.SYMBOL, ')');
+
+	return args;
+}
+
 Parser.prototype.func_ = function(name) {
 	const func = Expr[name];
 	if (!func) {
@@ -270,16 +289,7 @@ Parser.prototype.func_ = function(name) {
       }
 	}
 
-	const args = [];
-
-	this.expect_(Parser.SYMBOL, '(');
-	while (!this.peek_(Parser.SYMBOL, ')')) {
-		args.push(this.expr_());
-		if (this.peek_(Parser.SYMBOL, ',')) {
-			this.expect_(Parser.SYMBOL, ',');
-		}
-	}
-	this.expect_(Parser.SYMBOL, ')');
+	const args = this.args_();
 
 	return new FuncExpr(func, args, name);
 }
@@ -515,28 +525,61 @@ Parser.prototype.parse = function() {
 	return expr;
 }
 
-Parser.prototype.select_ = function() {
-	const expr = this.expr_();
+Parser.prototype.commas_ = function(func) {
+	const result = [func()];
+	while (this.peek_(Parser.SYMBOL, ',')) {
+		this.next_();
+		result.push(func());
+	}
+	this.expect_(Parser.EOT);
+	return result;
+}
+
+Parser.prototype.as_ = function(alias) {
 	if (!this.peek_(Parser.IDENTIFIER, 'as')) {
-		return {expr: expr, as: expr.alias()};
+		return alias;
 	}
 
 	this.next_();
 	if (this.peek_(Parser.REFERENCE)) {
-		return {expr: expr, as: this.factor_().reference};
+		return this.factor_().reference;
 	}
 
-	return {expr: expr, as: this.expect_(Parser.IDENTIFIER).text};
+	return this.expect_(Parser.IDENTIFIER).text;
+}
+
+Parser.prototype.aggr_ = function() {
+	const name = this.expect_(Parser.IDENTIFIER).text;
+	const aggr = Aggr[name];
+	if (!aggr) {
+    	const candidates = Object.keys(Aggr).filter(key => (key == key.toLowerCase()))
+    	const closest = Expr.topNLevenshtein(candidates, name, 1, 5);
+    	if (closest.length) {
+      	throw new SyntaxError("Unknown aggregate: " + name +
+      		'. Did you mean "' + closest[0].candidate.toUpperCase() + '"?');
+      } else {
+      	throw new SyntaxError("Unknown aggregate: '" + name);
+      }
+	}
+
+	const args = this.args_();
+	const options = {};
+	const func = new aggr(args, options);
+
+	return {func: func, as: this.as_(name)}
+}
+
+Parser.prototype.aggrs = function() {
+	return this.commas_(this.aggr_.bind(this));
+}
+
+Parser.prototype.select_ = function() {
+	const expr = this.expr_();
+	return {expr: expr, as: this.as_(expr.alias())};
 }
 
 Parser.prototype.selects = function() {
-	const result = [this.select_()];
-	while (this.peek_(Parser.SYMBOL, ',')) {
-		this.next_();
-		result.push(this.select_());
-	}
-	this.expect_(Parser.EOT);
-	return result;
+	return this.commas_(this.select_.bind(this));
 }
 
 Parser.prototype.order_ = function() {
@@ -570,13 +613,7 @@ Parser.prototype.order_ = function() {
 }
 
 Parser.prototype.orders = function() {
-	const result = [this.order_()];
-	while (this.peek_(Parser.SYMBOL, ',')) {
-		this.next_();
-		result.push(this.order_());
-	}
-	this.expect_(Parser.EOT);
-	return result;
+	return this.commas_(this.order_.bind(this));
 }
 
 /**

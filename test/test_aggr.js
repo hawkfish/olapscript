@@ -9,8 +9,8 @@ describe('Aggr', function() {
 		const CountStar = Aggr.countstar;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
-      		const options = {option: 1};
-        const e = new CountStar(options);
+      	const options = {option: 1};
+        const e = new CountStar([], options);
         expect(e.args).to.deep.equal([]);
         expect(e.options).deep.equal(options);
       });
@@ -44,8 +44,8 @@ describe('Aggr', function() {
   	const Count = Aggr.count;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
-      		const arg = "arg";
-      		const options = {option: 1};
+				const arg = "arg";
+				const options = {option: 1};
         const e = new Count(arg, options);
         expect(e.args).to.deep.equal([arg]);
         expect(e.options).deep.equal(options);
