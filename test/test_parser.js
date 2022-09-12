@@ -127,6 +127,11 @@ describe('Parser', function() {
 				expect(actual.args.length).to.equal(expected.args.length);
 				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], msg));
 				break;
+			case 'if':
+				expect(actual.expr).to.be.null;
+				expect(actual.args.length).to.equal(expected.args.length);
+				expected.args.forEach((arg, a) => expectExpr(arg, actual.args[a], msg));
+				break;
 			default:
 				expect(false, "Unknown expression type").to.be.true;
 				break;
@@ -197,7 +202,7 @@ describe('Parser', function() {
 				'END'
 			;
 			const importance = new RefExpr("importance");
-			const expected = new CaseExpr([
+			const expected = new CaseExpr('case', [
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')], 'contains'), new ConstExpr(1),
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')], 'contains'), new ConstExpr(2),
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')], 'contains'), new ConstExpr(3),
@@ -214,7 +219,7 @@ describe('Parser', function() {
 				'END'
 			;
 			const importance = new RefExpr("importance");
-			const expected = new CaseExpr([
+			const expected = new CaseExpr('case', [
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('high')], 'contains'), new ConstExpr(1),
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('medium')], 'contains'), new ConstExpr(2),
 				new FuncExpr(Expr.contains, [importance, new ConstExpr('low')], 'contains'), new ConstExpr(3),
@@ -232,7 +237,7 @@ describe('Parser', function() {
 				'END'
 			;
 			const importance = new RefExpr("importance");
-			const expected = new CaseExpr([
+			const expected = new CaseExpr('case', [
 				new ConstExpr('high'), new ConstExpr(1),
 				new ConstExpr('medium'), new ConstExpr(2),
 				new ConstExpr('low'), new ConstExpr(3),
@@ -249,12 +254,32 @@ describe('Parser', function() {
 				'END'
 			;
 			const importance = new RefExpr("importance");
-			const expected = new CaseExpr([
+			const expected = new CaseExpr('case', [
 				new ConstExpr('high'), new ConstExpr(1),
 				new ConstExpr('medium'), new ConstExpr(2),
 				new ConstExpr('low'), new ConstExpr(3),
 				new ConstExpr(null)
 			], importance);
+			expectParse(setup, expected);
+		});
+
+		it('should parse IF THEN', function() {
+			const setup = `IF "importance" THEN 1 END`;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr('if', [
+				importance, new ConstExpr(1),
+				new ConstExpr(null)
+			]);
+			expectParse(setup, expected);
+		});
+
+		it('should parse IF THEN', function() {
+			const setup = `IF "importance" THEN 1 ELSE 2 END`;
+			const importance = new RefExpr("importance");
+			const expected = new CaseExpr('if', [
+				importance, new ConstExpr(1),
+				new ConstExpr(2)
+			]);
 			expectParse(setup, expected);
 		});
 

@@ -320,7 +320,30 @@ Parser.prototype.case_ = function() {
 	// END
 	this.expect_(Parser.IDENTIFIER, 'end');
 
-	return new CaseExpr(args, expr);
+	return new CaseExpr('case', args, expr);
+}
+
+Parser.prototype.if_ = function() {
+	const expr = null;
+	const args = [];
+
+	// IF <expr>
+	args.push(this.expr_());
+
+	// THEN <expr>
+	this.expect_(Parser.IDENTIFIER, 'then');
+	args.push(this.expr_());
+
+	// ELSE <expr>
+	if (this.peek_(Parser.IDENTIFIER, 'else')) {
+		this.next_();
+		args.push(this.expr_());
+	}
+
+	// END
+	this.expect_(Parser.IDENTIFIER, 'end');
+
+	return new CaseExpr('if', args, expr);
 }
 
 Parser.prototype.factor_ = function() {
@@ -349,6 +372,8 @@ Parser.prototype.factor_ = function() {
 			return new FuncExpr(Expr.not, [this.expr_()], token.text);
 		case 'case':
 			return this.case_();
+		case 'if':
+			return this.if_();
 		default:
 			if (!this.peek_(Parser.SYMBOL, '(')) {
 				return new RefExpr(token.text);

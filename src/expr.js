@@ -211,21 +211,30 @@ class ConstExpr extends Expr {
 /**
  * A class for handling case statements with short circuiting
  *
- * @param {Array} args - The input expressions for the function call.
+ * @param {String} type - The type of case ('case' or 'if').
+ * @param {Array} args - The input expressions for the case.
  * @param {Function} expr - The optional case value expression.
  */
 class CaseExpr extends Expr {
-	constructor(args, expr) {
-		super('case');
+	constructor(type, args, expr) {
+		super(type.toLowerCase());
 		this.expr = expr;
 		this.args = args;
 		// Add a missing else clause
-		if (args.length % 2 == 0) {
+		if (this.args.length % 2 == 0) {
 			this.args.push(new ConstExpr(null));
 		}
 	}
 
 	toString() {
+		if (this.type == 'if') {
+			return 'IF ' + this.args[0].toString()
+					 + '\nTHEN ' + this.args[1].toString()
+					 + '\nELSE ' + this.args[2].toString()
+					 + '\nEND'
+					 ;
+		}
+
 		var result = 'CASE';
 		if (this.expr) {
 			result += ' ' + this.expr.toString();
@@ -241,7 +250,7 @@ class CaseExpr extends Expr {
 	}
 
 	alias() {
-		return "case";
+		return this.type;
 	}
 
 	evaluate(namespace, selection, length) {

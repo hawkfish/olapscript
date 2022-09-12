@@ -239,7 +239,7 @@ describe('Expression nodes', function() {
 					elses:  new Column(undefined, Array(length).fill("Izvestia"))
 				};
 
-				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens"), new RefExpr("elses")]);
+				const setup = new CaseExpr('case', [new RefExpr("whens"), new RefExpr("thens"), new RefExpr("elses")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
@@ -256,7 +256,7 @@ describe('Expression nodes', function() {
 					thens:  new Column(undefined, Array(length).fill("Pravda")),
 				};
 
-				const setup = new CaseExpr([new RefExpr("whens"), new RefExpr("thens")]);
+				const setup = new CaseExpr('case', [new RefExpr("whens"), new RefExpr("thens")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
@@ -276,7 +276,7 @@ describe('Expression nodes', function() {
 					elses:   new Column(undefined, Array(length).fill("Nyet"))
 				};
 
-				const setup = new CaseExpr([
+				const setup = new CaseExpr('case', [
 					new RefExpr("whens1"), new RefExpr("thens1"),
 					new RefExpr("whens2"), new RefExpr("thens2"),
 					new RefExpr("elses")
@@ -300,7 +300,7 @@ describe('Expression nodes', function() {
 					thens2:  new Column(undefined, Array(length).fill("Izvestia")),
 				};
 
-				const setup = new CaseExpr([
+				const setup = new CaseExpr('case', [
 					new RefExpr("whens1"), new RefExpr("thens1"),
 					new RefExpr("whens2"), new RefExpr("thens2")
 				]);
@@ -331,11 +331,60 @@ describe('Expression nodes', function() {
 					},
 					[new RefExpr("rowid")],
 					"THROW");
-				const setup = new CaseExpr([new RefExpr("whens"), thens, new RefExpr("elses")]);
+				const setup = new CaseExpr('case', [new RefExpr("whens"), thens, new RefExpr("elses")]);
 				expect(setup.args).to.be.an('array').lengthOf(length);
 				expect(setup.expr).to.be.undefined;
 				expect(setup.alias()).to.equal('case');
 				expect(setup.toString()).to.equal('CASE WHEN "whens" THEN THROW("rowid") ELSE "elses" END');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", "Izvestia"]);
+			});
+		});
+
+		describe('with an IF type', function() {
+			it('should compute single cases', function() {
+				const length = 3;
+				const namespace = {
+					whens:  new Column(undefined, [true, false, null]),
+					thens:  new Column(undefined, Array(length).fill("Pravda")),
+					elses:  new Column(undefined, Array(length).fill("Izvestia"))
+				};
+
+				const setup = new CaseExpr('if', [new RefExpr("whens"), new RefExpr("thens"), new RefExpr("elses")]);
+				expect(setup.args).to.be.an('array').lengthOf(length);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('if');
+				expect(setup.toString()).to.equal('IF "whens"\nTHEN "thens"\nELSE "elses"\nEND');
+				const selection = Array(length).fill(null).map((v, i) => i);
+				const actual = setup.evaluate(namespace, selection, length);
+				expect(actual.data).to.be.an('array').lengthOf(length);
+				expect(actual.data).to.deep.equal(["Pravda", "Izvestia", "Izvestia"]);
+			});
+			it('should short circuit', function() {
+				const length = 3;
+				const namespace = {
+					rowid: new Column(undefined, [1, 2, 3]),
+					whens: new Column(undefined, [true, false, null]),
+					elses: new Column(undefined, Array(length).fill("Izvestia"))
+				};
+
+				// Make sure we don't evaluate rowid 2.
+				const thens = new FuncExpr(function(r) {
+						if (r % 1) {
+							throw "Unreachable";
+						} else {
+							return "Pravda";
+						}
+					},
+					[new RefExpr("rowid")],
+					"THROW");
+				const setup = new CaseExpr('if', [new RefExpr("whens"), thens, new RefExpr("elses")]);
+				expect(setup.args).to.be.an('array').lengthOf(length);
+				expect(setup.expr).to.be.undefined;
+				expect(setup.alias()).to.equal('if');
+				expect(setup.toString()).to.equal('IF "whens"\nTHEN THROW("rowid")\nELSE "elses"\nEND');
 				const selection = Array(length).fill(null).map((v, i) => i);
 				const actual = setup.evaluate(namespace, selection, length);
 				expect(actual.data).to.be.an('array').lengthOf(length);
