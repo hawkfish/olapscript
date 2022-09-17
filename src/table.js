@@ -63,6 +63,9 @@ if (typeof ConstExpr === 'undefined') {
   const expr = require("./expr");
   ConstExpr = expr.ConstExpr;
 }
+if (typeof Parser === 'undefined') {
+  Parser = require("./parser").Parser;
+}
 
 /**
  * A table class for performing relational operations on Google Sheets
@@ -527,14 +530,17 @@ Table.prototype.getColumn = function(name) {
  * Eventually, they should be expressions
  * not just column references.
  *
- * @param {Array} expressions - An ordered list of expressions and aliases.
+ * @param {Array} selects - An ordered list of expressions and aliases.
  * @returns {Table}
  */
-Table.prototype.select = function(expressions) {
+Table.prototype.select = function(selects) {
   const namespace = {};
   const ordinals = [];
   const that = this;
-  expressions
+  if (typeof selects == 'string') {
+  	selects = new Parser(selects).selects();
+  }
+  selects
   	.map(expr => Table.normaliseBinding(expr))
   	.forEach(function(expr) {
 			ordinals.push(expr.as);
