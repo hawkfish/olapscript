@@ -18,7 +18,44 @@ describe('Table', function() {
     {fk: 4, amt: 3.25}
   ];
 
-  describe('EquiJoin', function() {
+	describe('equiJoinKeys', function() {
+    it('should convert single equality conditions', function() {
+    	const setup = new Parser('"fk" = "pk"').parse();
+    	const expected = {
+    		left: new RefExpr('fk'),
+    		right: new RefExpr('pk'),
+    		distinct: false
+    	};
+    	const actual = Table.equiJoinKeys(setup);
+    	expect(actual).to.be.an('array').lengthOf(1);
+    	expect(actual[0]).to.deep.equal(expected);
+    });
+
+    it('should convert single not distinct conditions', function() {
+    	const setup = new Parser('"fk" is not distinct from "pk"').parse();
+    	const expected = {
+    		left: new RefExpr('fk'),
+    		right: new RefExpr('pk'),
+    		distinct: true
+    	};
+    	const actual = Table.equiJoinKeys(setup);
+    	expect(actual).to.be.an('array').lengthOf(1);
+    	expect(actual[0]).to.deep.equal(expected);
+    });
+
+    it('should convert AND-ed conditions', function() {
+    	const setup = new Parser('"fk" = "pk" AND "filter" is not distinct from "test"').parse();
+    	const expected = [
+    		{left: new RefExpr('fk'), right: new RefExpr('pk'), distinct: false},
+    		{left: new RefExpr('filter'), right: new RefExpr('test'), distinct: true}
+    	];
+    	const actual = Table.equiJoinKeys(setup);
+    	expect(actual).to.be.an('array').lengthOf(2);
+    	expect(actual).to.deep.equal(expected);
+    });
+	});
+
+  describe('equiJoin', function() {
     it('should inner join foreign keys', function() {
       const condition = {build: new RefExpr("pk"), probe: new RefExpr("fk")};
       const build = Table.fromRows(dim_rows);
@@ -107,6 +144,21 @@ describe('Table', function() {
     });
     it('should allow left and right as aliases for probe and build', function() {
       const condition = {right: new RefExpr("pk"), left: new RefExpr("fk")};
+      const build = Table.fromRows(dim_rows);
+      const probe = Table.fromRows(fact_rows);
+      const joined = probe.equiJoin(build, condition);
+      expect(joined.getRowCount()).to.equal(5);
+      probe.ordinals.forEach(name =>
+        (joined.selection.forEach((selid) =>
+          expect(joined.namespace[name].data[selid], name).to.equal(fact_rows[selid][name]))));
+      build.ordinals.forEach(name =>
+        (joined.selection.forEach(function (selid) {
+          const pk = joined.namespace.pk.data[selid];
+          expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
+        })));
+    });
+    it('should parse string predicates into conditions', function() {
+      const condition = '"fk" = "pk"';
       const build = Table.fromRows(dim_rows);
       const probe = Table.fromRows(fact_rows);
       const joined = probe.equiJoin(build, condition);

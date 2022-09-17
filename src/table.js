@@ -644,13 +644,56 @@ Table.prototype.unionAll = function(second, options_p) {
 }
 
 /**
+ * Convert a join predicate to a set of equi-join keys
+ *
+ * @param {Expr} predicate - The predicate to convert
+ * @returns {Object} The key pairs for an equi-join, or null
+ */
+Table.equiJoinKeys = function(predicate) {
+	if (predicate.type != 'function') {
+		return null;
+	}
+
+	// Handle single comparison by faking unary AND
+	var args = predicate.args;
+	switch (predicate.fname) {
+	case '=':
+	case 'isnotdistinct':
+		args = [predicate];
+		break;
+	case 'and':
+		break;
+	default:
+		return null;
+	}
+
+	const keys = [];
+	for (var i = 0; i < args.length; ++i) {
+		const arg = args[i];
+		if (arg.type != 'function') {
+			return null;
+		}
+		switch (arg.fname) {
+		case '=':
+		case 'isnotdistinct':
+			keys.push({left: arg.args[0], right: arg.args[1], distinct: (arg.fname != '=')});
+			break;
+		default:
+			return null;
+		}
+	}
+
+	return keys;
+}
+
+/**
  * Implements a relational equi-join, which is a join where all the predicates
  * are AND-ed and involve equality of key pairs, one from each table.
  * This is the most common kind of join, and is used for looking up data,
  * or connecting tables with primary/foreign key matches.
  *
  * @param {Table} build - The right hand side (smaller) table.
- * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>}, ...]
+ * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>, distinct: <Boolean>}, ...]
  * @param {Object} options - Join options
  * @returns {Table}
  *
@@ -667,6 +710,9 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const rightOuter = options.type in {right: null, full: null};
 
   // Normalise the arguments
+  if (typeof keys == 'string') {
+  	keys = Table.equiJoinKeys(new Parser(keys).parse());
+  }
   if (!Array.isArray(keys)) {
     keys = [keys,];
   };
