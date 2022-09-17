@@ -559,7 +559,10 @@ Table.prototype.select = function(selects) {
  */
 Table.prototype.where = function(predicate) {
   // Normalise arguments
-   if (predicate.expr) {
+  if (typeof predicate == 'string') {
+  	predicate = new Parser(predicate).parse();
+  }
+  if (predicate.expr) {
     predicate = predicate.expr;
   }
   predicate = Table.normalise(predicate);

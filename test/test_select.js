@@ -33,18 +33,19 @@ describe('Table', function() {
 			expect(target.getRowCount(), "Row Count").to.equal(3);
 		});
 
-    it('should parse SELECT clauses', function() {
+    it('should parse clauses', function() {
 			const target = Table.fromSheet(new Sheet('Customers', customers))
 				.select(`"Customer Name" AS "Name",
     						 "Address Line 1" AS "addressLine1",
     						 "Address Line 2" AS "addressLine2",
     						 "City" AS city,
     						 "ZIP"`)
+		 		.where('"ZIP" = 10036')
 			;
 			expect(target.ordinals).to.be.an('array').lengthOf(5);
 			expect(target.ordinals).to.deep.equal([ "Name", 'addressLine1', 'addressLine2', 'city', 'ZIP']);
 			expect(target.getDataLength(), "Data Length").to.equal(3);
-			expect(target.getRowCount(), "Row Count").to.equal(3);
+			expect(target.getRowCount(), "Row Count").to.equal(1);
 		});
 	});
 });
