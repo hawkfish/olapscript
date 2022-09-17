@@ -79,5 +79,22 @@ describe('Table', function() {
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
     	expect(actual.namespace.Avg.data).to.deep.equal([25, 24]);
   	});
+
+    it('should remove duplicates from a group by clause', function() {
+    	const actual = Table.fromRows(bedrock).groupBy('"last" AS "family"');
+    	expect(actual.ordinals).to.deep.equal(["family"]);
+    	expect(actual.namespace).to.have.keys(actual.ordinals);
+    	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
+  	});
+
+    it('should compute aggregates from an agregate clause', function() {
+    	const actual = Table
+    		.fromRows(bedrock)
+    		.groupBy('"last" AS "family"', 'AVG("age") AS "Avg"');
+    	expect(actual.ordinals).to.deep.equal(["family", "Avg"]);
+    	expect(actual.namespace).to.have.keys(actual.ordinals);
+    	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
+    	expect(actual.namespace.Avg.data).to.deep.equal([25, 24]);
+  	});
   });
 });

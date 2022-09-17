@@ -790,12 +790,18 @@ Table.normaliseAggr = function(aggr) {
 Table.prototype.groupby = function(groups, aggrs) {
   // Normalise the inputs
   groups = groups || [];
+  if (typeof groups == 'string') {
+  	groups = new Parser(groups).selects()
+  }
   if (groups && !Array.isArray(groups)) {
     groups = [groups,];
   }
   groups = groups.map(group => Table.normaliseBinding(group));
 
   aggrs = aggrs || [];
+  if (typeof aggrs == 'string') {
+  	aggrs = new Parser(aggrs).aggrs()
+  }
   if (aggrs && !Array.isArray(aggrs)) {
     aggrs = [aggrs,];
   }
