@@ -883,6 +883,9 @@ Table.normaliseOrder = function(order) {
  */
 Table.prototype.orderby = function(orders) {
   // Normalize arguments
+  if (typeof orders == 'string') {
+  	orders = new Parser(orders).orders();
+  }
   orders = orders || [];
   if (!Array.isArray(orders)) {
     orders = [orders,];
