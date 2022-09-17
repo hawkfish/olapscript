@@ -718,7 +718,8 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   };
   keys = keys.map(pair => ({
     build: Table.normaliseExpr(pair.build || pair.right),
-    probe: Table.normaliseExpr(pair.probe || pair.left)
+    probe: Table.normaliseExpr(pair.probe || pair.left),
+    distinct: pair.distinct || false
   }));
   const probe = this;
 
@@ -736,7 +737,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
   const buildMatches = {};
   const ht = build.selection.reduce(function (ht, val, buildID) {
-    const key = JSON.stringify(buildKeys.map(result => result.data[buildID]));
+  	//	Only insert nulls for distinct comparisons.
+  	const values = buildKeys.map(result => result.data[buildID]);
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return ht;
+  	}
+    const key = JSON.stringify(values);
     const rows = ht.get(key);
     if (rows) {
       rows.push(buildID);
@@ -750,7 +756,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection, probe.length));
   const probeMatches = {}
   probe.selection.forEach(function (val, probeID) {
-    const key = JSON.stringify(probeKeys.map(result => result.data[probeID]));
+  	const values = probeKeys.map(result => result.data[probeID]);
+  	//	Only check nulls for distinct comparisons.
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return;
+  	}
+    const key = JSON.stringify(values);
     const matches = ht.get(key);
     if (matches) {
       probeMatches[probeID] = matches;

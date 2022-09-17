@@ -7,7 +7,8 @@ describe('Table', function() {
   const dim_rows = [
     {pk: 1, email: 'customer1@example.com'},
     {pk: 2, email: 'customer2@example.com'},
-    {pk: 3, email: 'customer3@example.com'}
+    {pk: 3, email: 'customer3@example.com'},
+    {pk: null, email: 'customernull@example.com'}
   ];
   const fact_rows = [
     {fk: 1, amt: 30.50},
@@ -15,7 +16,8 @@ describe('Table', function() {
     {fk: 1, amt: 5.95},
     {fk: 3, amt: 19.95},
     {fk: 3, amt: -4.50},
-    {fk: 4, amt: 3.25}
+    {fk: 4, amt: 3.25},
+    {fk: null, amt: 0}
   ];
 
 	describe('equiJoinKeys', function() {
@@ -77,7 +79,7 @@ describe('Table', function() {
       const build = Table.fromRows(dim_rows);
       const probe = Table.fromRows(fact_rows);
       const joined = probe.equiJoin(build, condition, options);
-      expect(joined.getRowCount()).to.equal(6);
+      expect(joined.getRowCount()).to.equal(7);
       probe.ordinals.forEach(name =>
         (joined.selection.forEach((selid) =>
           expect(joined.namespace[name].data[selid], name).to.equal(fact_rows[selid][name]))));
@@ -98,7 +100,7 @@ describe('Table', function() {
       const build = Table.fromRows(dim_rows);
       const probe = Table.fromRows(fact_rows);
       const joined = probe.equiJoin(build, condition, options);
-      expect(joined.getRowCount()).to.equal(6);
+      expect(joined.getRowCount()).to.equal(7);
       probe.ordinals.forEach(name =>
         (joined.selection.forEach(function (selid) {
           if (selid < 5) {
@@ -110,7 +112,7 @@ describe('Table', function() {
       ));
       build.ordinals.forEach(name =>
         (joined.selection.forEach(function(selid, rowid) {
-          const pk = joined.namespace.pk.data[selid];
+          const pk = joined.namespace.pk.data[selid] || 4;
           expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
         })
       ));
@@ -121,7 +123,7 @@ describe('Table', function() {
       const build = Table.fromRows(dim_rows);
       const probe = Table.fromRows(fact_rows);
       const joined = probe.equiJoin(build, condition, options);
-      expect(joined.getRowCount()).to.equal(7);
+      expect(joined.getRowCount()).to.equal(9);
       probe.ordinals.forEach(name =>
         (joined.selection.forEach(function (selid) {
           if (selid < fact_rows.length) {
@@ -134,7 +136,7 @@ describe('Table', function() {
       build.ordinals.forEach(name =>
         (joined.selection.forEach(function(selid) {
           if (selid < 5 || selid >= fact_rows.length ) {
-            const pk = joined.namespace.pk.data[selid];
+            const pk = joined.namespace.pk.data[selid] || 4;
             expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
           } else {
             expect(joined.namespace[name].data[selid], name).to.be.null;
@@ -157,7 +159,7 @@ describe('Table', function() {
           expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
         })));
     });
-    it('should parse string predicates into conditions', function() {
+    it('should parse string equality predicates into conditions', function() {
       const condition = '"fk" = "pk"';
       const build = Table.fromRows(dim_rows);
       const probe = Table.fromRows(fact_rows);
@@ -169,6 +171,26 @@ describe('Table', function() {
       build.ordinals.forEach(name =>
         (joined.selection.forEach(function (selid) {
           const pk = joined.namespace.pk.data[selid];
+          expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
+        })));
+    });
+    it('should parse string not distinct predicates into conditions', function() {
+      const condition = '"fk" is not distinct from "pk"';
+      const build = Table.fromRows(dim_rows);
+      const probe = Table.fromRows(fact_rows);
+      const joined = probe.equiJoin(build, condition);
+      expect(joined.getRowCount()).to.equal(6);
+      probe.ordinals.forEach(name =>
+        (joined.selection.forEach(function(selid) {
+        	if (selid < 5) {
+          	expect(joined.namespace[name].data[selid], name).to.equal(fact_rows[selid][name]);
+          } else {
+          	expect(joined.namespace[name].data[selid], name).to.equal(fact_rows[selid + 1][name]);
+          }
+        })));
+      build.ordinals.forEach(name =>
+        (joined.selection.forEach(function (selid) {
+          const pk = joined.namespace.pk.data[selid] || 4;
           expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
         })));
     });
