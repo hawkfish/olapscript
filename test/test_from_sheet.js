@@ -111,6 +111,23 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table with no data', function() {
+      const nodata = [
+        ['Name', 'Last', 'Age'	]
+      ];
+      const actual = Table.fromSheet(new Sheet('nodata', nodata));
+      expect(actual.ordinals).to.deep.equal(['Name', 'Last', 'Age']);
+      expect(actual.getRowCount()).to.equal(nodata.length - 1);
+      expect(actual.selection.length).to.equal(nodata.length - 1);
+      actual.selection.forEach((selid, rowid) => expect(selid).to.equal(rowid));
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(nodata.length - 1);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid]).to.equal(nodata[selid+1][colid]);
+        });
+      });
+    });
     it('should read a table not at the top left', function() {
       const contents = [
         [null, null, null, null, null, null],
