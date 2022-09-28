@@ -1101,10 +1101,6 @@ Table.fromSheet = function(sheet, options_p) {
     header = header.map((name, colno) => name ? name : Table.defaultColumnName(colno));
   }
 
-  // Extract the values
-  const valueRange = sheet.getRange(options.top, options.left, options.limit, options.width);
-  const values = valueRange.getValues();
-
   // Create unique column names
   const unique = header.reduce((unique, key) => (unique[key] = 0, unique), {});
   const ordinals = header.map(function(header) {
@@ -1122,15 +1118,25 @@ Table.fromSheet = function(sheet, options_p) {
     return name;
   });
 
-  const namespace = {}
-  // Pivot the data into columns
-  for (var c = 0; c < valueRange.getNumColumns(); ++c) {
-    const data = Array.from(values, row => row[c]);
-    const name = ordinals[c];
-    const type = undefined;
-    const col = new Column(type, data);
-    namespace[name] = col;
-  }
+  // Extract the values (if any)
+  const namespace = {};
+  if (options.limit > 0) {
+		const valueRange = sheet.getRange(options.top, options.left, options.limit, options.width);
+		const values = valueRange.getValues();
+
+		// Pivot the data into columns
+		for (var c = 0; c < valueRange.getNumColumns(); ++c) {
+			const data = Array.from(values, row => row[c]);
+			const name = ordinals[c];
+			const type = undefined;
+			const col = new Column(type, data);
+			namespace[name] = col;
+		}
+	} else {
+		//	Zero rows, so create empty, untyped columns
+		ordinals.forEach(name => namespace[name] = new Column(undefined, new Array(0)));
+	}
+
   return new Table(namespace, ordinals, undefined, {name: sheet.getName()});
 }
 
