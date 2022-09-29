@@ -916,7 +916,8 @@ class Table {
     this.namespace = namespace || {};
     this.ordinals = ordinals || [];
 
-    this.selection = selection || this.namespace[this.ordinals[0]].data.map((v, rowid) => rowid);
+		const col0 = this.namespace[this.ordinals[0]] || new Column(undefined, []);
+    this.selection = selection || col0.data.map((v, rowid) => rowid);
   	this.length = Object.keys(this.namespace).reduce((count, name) => Math.max(count, namespace[name].data.length), 0);
   }
 
@@ -1075,11 +1076,12 @@ Table.fromSheet = function(sheet, options_p) {
     );
     // Update the valid row range.
     options.top = bounds.top;
-    options.limit = bounds.limit;
+    options.limit = Math.max(bounds.limit, 0);
   }
   // Adjust for inclusive header
   if (!options.header) {
     options.header = options.top;
+  	options.headerCount = Math.min(options.headerCount, options.limit + 1);
     options.top += options.headerCount;
   }
 
