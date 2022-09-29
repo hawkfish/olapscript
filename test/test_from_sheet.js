@@ -128,6 +128,13 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table from an empty sheet', function() {
+      const empty = [];
+      const actual = Table.fromSheet(new Sheet('empty', empty));
+      expect(actual.ordinals).to.deep.equal([]);
+      expect(actual.getRowCount()).to.equal(0);
+      expect(actual.selection.length).to.equal(0);
+    });
     it('should read a table not at the top left', function() {
       const contents = [
         [null, null, null, null, null, null],
