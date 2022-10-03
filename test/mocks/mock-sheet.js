@@ -44,8 +44,12 @@ class MockSheet {
   getRange(row, column, numRows, numColumns) {
     row = row || 1;
     column = column || 1;
-    numRows = numRows || this.numRows;
-    numColumns = numColumns || 1;
+  	if (numRows < 1) {
+  		throw Error("The number of rows in the range must be at least 1");
+  	}
+  	if (numColumns < 1) {
+  		throw Error("The number of columns in the range must be at least 1");
+  	}
 
     return new MockRange(this, row, column, numRows, numColumns);
   }
