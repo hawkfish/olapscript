@@ -143,14 +143,19 @@ Expr.topNLevenshtein = function(strings, target, n = 5, threshold = 5) {
  * @param {Array} args - The input expressions for the function call.
  */
 class FuncExpr extends Expr {
-  constructor(func, args) {
+  constructor(func, args, fname) {
     super('function');
     this.func = func;
     this.args = args;
+    this.fname = fname || 'FuncExpr';
   }
 
+	toString() {
+		return this.fname.toUpperCase() + "(" + this.args.map(arg => String(arg)).join(", ") + ")";
+	}
+
   alias() {
-    return this.func.name + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
+    return this.fname + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
   }
 }
 
@@ -188,11 +193,7 @@ class RefExpr extends Expr {
   }
 
   toString() {
-  	if (this.reference.includes(' ')) {
-    	return '"' + this.reference + '"';
-    } else {
-    	return this.reference;
-    }
+  	return RefExpr.encode(this.reference);
   }
 
   alias() {
@@ -214,6 +215,10 @@ class RefExpr extends Expr {
   }
 }
 
+RefExpr.encode = function(r) {
+  	return '"' + r.replace(/"/g, '""') + '"';
+}
+
 /**
  * A class for modelling constant scalars
  *
@@ -224,9 +229,19 @@ class ConstExpr extends Expr {
     super('constant');
     this.constant = constant;
     this.datatype = typeof constant;
+    if (constant instanceof Date) {
+    	this.datatype = 'date';
+    }
   }
 
   toString() {
+  	switch (this.datatype) {
+  	case 'string':
+  		return "'" + this.constant.replace(/'/g, "''") + "'";
+  	case 'date':
+  		return '#' + this.constant.toISOString() + '#';
+		}
+
     return String(this.constant);
   }
 
@@ -242,37 +257,46 @@ class ConstExpr extends Expr {
 /**
  * A class for handling case statements with short circuiting
  *
- * @param {Array} args - The input expressions for the function call.
+ * @param {String} type - The type of case ('case' or 'if').
+ * @param {Array} args - The input expressions for the case.
  * @param {Function} expr - The optional case value expression.
  */
 class CaseExpr extends Expr {
-	constructor(args, expr) {
-		super('case');
+	constructor(type, args, expr) {
+		super(type.toLowerCase());
 		this.expr = expr;
 		this.args = args;
 		// Add a missing else clause
-		if (args.length % 2 == 0) {
+		if (this.args.length % 2 == 0) {
 			this.args.push(new ConstExpr(null));
 		}
 	}
 
 	toString() {
-		var result = 'case';
+		if (this.type == 'if') {
+			return 'IF ' + this.args[0].toString()
+					 + '\nTHEN ' + this.args[1].toString()
+					 + '\nELSE ' + this.args[2].toString()
+					 + '\nEND'
+					 ;
+		}
+
+		var result = 'CASE';
 		if (this.expr) {
-			result += ' ' + this.expr.alias();
+			result += ' ' + this.expr.toString();
 		}
 		var a = 0;
 		while (a < this.args.length - 1) {
-			result += ' when ' + this.args[a++].alias();
-			result += ' then ' + this.args[a++].alias();
+			result += ' WHEN ' + this.args[a++].toString();
+			result += ' THEN ' + this.args[a++].toString();
 		}
-		result += ' else ' + this.args[a++].alias() + ' end';
+		result += ' ELSE ' + this.args[a++].toString() + ' END';
 
 		return result;
 	}
 
 	alias() {
-		return "case";
+		return this.type;
 	}
 
 	evaluate(namespace, selection, length) {
@@ -579,13 +603,18 @@ Expr.today = function() {
  *
  */
 class Aggr {
-	constructor(args, options) {
+	constructor(args, options, fname) {
+		this.fname = fname || 'Aggr';
 		args = args || [];
 		if (!Array.isArray(args)) {
 			args = [args];
 		}
 		this.args = args;
 		this.options = options || {};
+	}
+
+	toString() {
+		return this.fname.toUpperCase() + "(" + this.args.map(arg => arg.toString()).join(", ") + ")";
 	}
 
 	initialize() {
@@ -606,8 +635,8 @@ class Aggr {
  *
  */
 class CountStar extends Aggr {
-  constructor(options) {
-  	super([], options);
+  constructor(args, options) {
+  	super(args, options, 'countstar');
   }
 
 	initialize() {
@@ -628,6 +657,10 @@ class CountStar extends Aggr {
  *
  */
 class Count extends Aggr {
+  constructor(arg, options) {
+  	super([arg], options, 'count');
+  }
+
 	initialize() {
 		return Object.assign(super.initialize(), {count: 0});
 	}
@@ -647,7 +680,7 @@ class Count extends Aggr {
  */
 class Sum extends Aggr {
   constructor(args, options) {
-    super(args, options);
+    super(args, options, 'sum');
   }
 
 	initialize() {
@@ -674,6 +707,11 @@ class Sum extends Aggr {
  *
  */
 class Avg extends Sum {
+  constructor(args, options) {
+    super(args, options);
+    this.fname = 'avg';
+  }
+
 	initialize() {
 		return Object.assign(super.initialize(), {count: 0});
 	}
@@ -697,8 +735,8 @@ class Avg extends Sum {
  *
  */
 class ValueAggr extends Aggr {
-	constructor(selector, args, options) {
-		super(args, options);
+	constructor(selector, args, options, fname) {
+		super(args, options, fname);
 		this.selector = selector;
 	}
 
@@ -731,7 +769,7 @@ class ValueAggr extends Aggr {
  */
 class Min extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => ((a < b) ? a : b), args, options);
+		super((a,b) => ((a < b) ? a : b), args, options, 'min');
 	}
 };
 
@@ -744,7 +782,7 @@ class Min extends ValueAggr {
  */
 class Max extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => ((a > b) ? a : b), args, options);
+		super((a,b) => ((a > b) ? a : b), args, options, 'max');
 	}
 };
 
@@ -757,7 +795,7 @@ class Max extends ValueAggr {
  */
 class First extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => a, args, options);
+		super((a,b) => a, args, options, 'first');
 	}
 };
 
@@ -770,7 +808,7 @@ class First extends ValueAggr {
  */
 class Last extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => b, args, options);
+		super((a,b) => b, args, options, 'last');
 	}
 };
 
@@ -782,6 +820,10 @@ class Last extends ValueAggr {
  *
  */
 class ArrayAgg extends Aggr {
+	constructor(args, options) {
+		super(args, options, 'arrayagg');
+	}
+
 	initialize() {
 		return Object.assign(super.initialize(), {value: null});
 	}
@@ -813,22 +855,685 @@ class StringAgg extends ValueAggr {
 		const sep = arg2.constant || ',';
 
 		//	Only pass on the first argument
-		super((a, b) => (a + sep + b), [args[0]], options);
+		super((a, b) => (a + sep + b), [args[0]], options, 'stringagg');
 		this.sep = sep;
 	}
 };
+
+Aggr.countstar = CountStar;
+Aggr.count = Count;
+
+Aggr.sum = Sum;
+Aggr.avg = Avg;
+
+Aggr.min = Min;
+Aggr.max = Max;
+Aggr.first = First;
+Aggr.last = Last;
+
+Aggr.arrayagg = ArrayAgg;
+Aggr.stringagg = StringAgg;
 
 /**
  * Node exports
  */
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count,
-    Sum, Avg,
-    Min, Max, First, Last,
-    StringAgg, ArrayAgg
+    Aggr
   };
 };
+/**
+ * This module implements expression trees for OLAPScript.
+ *
+ * Copyright © 2022 Richard Wesley and Ellen Ratajak
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the “Software”), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies
+ * or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/**
+ * Node imports
+ */
+if (typeof Expr === 'undefined') {
+  Expr = require("./expr").Expr;
+}
+if (typeof FuncExpr === 'undefined') {
+  FuncExpr = require("./expr").FuncExpr;
+}
+if (typeof RefExpr === 'undefined') {
+  RefExpr = require("./expr").RefExpr;
+}
+if (typeof CaseExpr === 'undefined') {
+  CaseExpr = require("./expr").CaseExpr;
+}
+if (typeof Aggr === 'undefined') {
+  Aggr = require("./aggr").Aggr;
+}
+
+/**
+ * Parser - A class for tokenising and parsing Expr (and Aggr) nodes from strings.
+ */
+class Parser {
+	constructor(text, options = {}) {
+		this.text = text;
+		this.alltokens = Parser.tokenise(text);
+		this.tokens = this.alltokens
+			.filter(token => token.type > Parser.COMMENT)
+			.map(function(token) {
+				var text = token.text;
+				if (text && token.type == Parser.IDENTIFIER) {
+					text = text.toLowerCase();
+				}
+				return  Object.assign({}, token, {text: text});
+			})
+		;
+		this.next = 0;
+	}
+};
+
+Parser.patterns = [
+	// Whitespace
+	/^(\s+)/m,
+	// Comments
+	/^(--[^\n]*)\n?/m,
+	// Strings
+	/^((?:\'[^\']*\')+)/,
+	// References
+	/^((?:\"[^\"]*\")+)/,
+	// Numbers
+	/^(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/,
+	// Dates
+	/^(\#[-+:.,\w ]+\#)/,
+	// Identifiers
+	/^([A-Za-z_]\w*)/,
+	// Symbols
+	/^([(),:\[\]{}])/,
+	// Comparisons
+	/^(<>|(?:[=<>!]=?))/,
+	// Operators
+	/^([-+*/%^])/
+];
+
+/**
+ *
+ * Token type codes
+ */
+Parser.WHITESPACE = 0;
+Parser.COMMENT = Parser.WHITESPACE + 1;
+Parser.STRING = Parser.COMMENT + 1;
+Parser.REFERENCE = Parser.STRING + 1;
+Parser.NUMBER = Parser.REFERENCE + 1;
+Parser.DATE = Parser.NUMBER + 1;
+Parser.IDENTIFIER = Parser.DATE + 1;
+Parser.SYMBOL = Parser.IDENTIFIER + 1;
+Parser.COMPARISON = Parser.SYMBOL + 1;
+Parser.OPERATOR = Parser.COMPARISON + 1;
+Parser.UNKNOWN = Parser.patterns.length;
+// End of Text token type
+Parser.EOT = Parser.UNKNOWN + 1;
+
+/**
+ *
+ * Token type names
+ */
+Parser.typeNames = [
+	'whitespace',
+	'comment',
+	'string',
+	'reference',
+	'number',
+	'date',
+	'identifier',
+	'symbol',
+	'comparison',
+	'operator',
+	'unknown',
+	'end',
+];
+
+Parser.typeArticles = [
+	'',
+	'a',
+	'a',
+	'a',
+	'a',
+	'a',
+	'an',
+	'a',
+	'a',
+	'an',
+	'the',
+	'the',
+];
+
+Parser.precedence = [
+	'^',
+	'/',
+	'*',
+	'-',
+	'+',
+	'between',
+	'isnotdistinct',
+	'isdistinct',
+	'=',
+	'<',
+	'<=',
+	'>',
+	'>=',
+	'<>',
+	'and',
+	'or'
+].reduce(function(precedence, op, i) {precedence[op] = i; return precedence;}, {});
+
+Parser.infixFunc = [
+	Expr.power,
+	Expr.divide,
+	Expr.times,
+	Expr.minus,
+	Expr.plus,
+	Expr.between,
+	Expr.isnotdistinct,
+	Expr.isdistinct,
+	Expr.eq,
+	Expr.lt,
+	Expr.le,
+	Expr.gt,
+	Expr.ge,
+	Expr.ne,
+	Expr.and,
+	Expr.or
+];
+
+/**
+ * readToken - Reads a token from the current position
+ *
+ *	@param {String} text - The text to read from
+ *	@param {Number} pos - The position to read from
+ *
+ * Tokens have the structure {type: Number, text: String, pos: Number, input: String}
+ */
+Parser.readToken = function(input, pos) {
+	const target = input.slice(pos);
+	const token = {type: 0, pos: pos, text: null, input: input};
+	for (; token.type < Parser.patterns.length; ++token.type) {
+		const pat = Parser.patterns[token.type];
+		const match = pat.exec(input.slice(pos))
+		if (match && !match.index) {
+			token.text = match[1];
+			break;
+		}
+	}
+	return token;
+}
+
+/**
+ * tokenise - Convert a string to tokens.
+ *
+ * Tokens have the structure {type: Number, text: String, pos: Number}
+ *
+ * @param {String} text - The text to tokenise
+ * @returns <Array> An array of tokens.
+ */
+Parser.tokenise = function(input) {
+	const tokens = [];
+	for (var pos = 0; pos < input.length;) {
+		const token = Parser.readToken(input, pos);
+		if (token.text === null) {
+			throw SyntaxError("Unknown token at position " + pos);
+		}
+		tokens.push(token);
+		pos += token.text.length;
+	}
+	tokens.push({type: Parser.EOT, pos: pos, text: null, input: input});
+
+	return tokens;
+}
+
+Parser.tokenize = Parser.tokenise;
+
+Parser.onUnexpected = function(token) {
+	throw SyntaxError(
+		'Unexpected ' + Parser.typeNames[token.type] +
+		' ("' + token.text +
+		'") at position ' + token.pos);
+}
+
+Parser.prototype.peek_ = function(type, text) {
+	const token = this.tokens[this.next];
+	if (token.type != type) {
+		return false;
+	} else if (text && text != token.text) {
+		return false;
+	}
+
+	return true;
+}
+
+Parser.prototype.next_ = function() {
+	return this.tokens[this.next++];
+}
+
+Parser.prototype.expect_ = function(type, text) {
+	const token = this.next_();
+	if (text && text != token.text) {
+		throw SyntaxError(
+			"Expected '" + text +
+			"' but found '" + token.text +
+			"' at position " + token.pos
+		);
+	} else if (token.type != type) {
+		throw SyntaxError(
+			"Expected " + Parser.typeArticles[type] + ' ' + Parser.typeNames[type] +
+			" but found " + Parser.typeArticles[token.type] + ' ' + Parser.typeNames[token.type] +
+			" at position " + token.pos
+		);
+	}
+
+	return token;
+}
+
+Parser.prototype.args_ = function() {
+	const args = [];
+
+	this.expect_(Parser.SYMBOL, '(');
+	if (!this.peek_(Parser.SYMBOL, ')')) {
+		args.push(this.expr_());
+		while (this.peek_(Parser.SYMBOL, ',')) {
+			this.expect_(Parser.SYMBOL, ',');
+			args.push(this.expr_());
+		}
+	}
+	this.expect_(Parser.SYMBOL, ')');
+
+	return args;
+}
+
+Parser.prototype.func_ = function(name) {
+	const func = Expr[name];
+	if (!func) {
+    	const candidates = Object.keys(Expr).filter(key => (key == key.toLowerCase()))
+    	const closest = Expr.topNLevenshtein(candidates, name.toLowerCase(), 1, 5);
+    	if (closest.length) {
+      	throw new SyntaxError("Unknown function: " + name +
+      		'. Did you mean "' + closest[0].candidate.toUpperCase() + '"?');
+      } else {
+      	throw new SyntaxError("Unknown function: '" + name);
+      }
+	}
+
+	const args = this.args_();
+
+	return new FuncExpr(func, args, name);
+}
+
+Parser.prototype.case_ = function() {
+	var expr = null;
+	const args = [];
+
+	// CASE <expr> WHEN
+	if (!this.peek_(Parser.IDENTIFIER, 'when')) {
+		expr = this.expr_();
+	}
+
+	// WHEN <expr> THEN <expr>
+	while (this.peek_(Parser.IDENTIFIER, 'when')) {
+		this.next_();
+		args.push(this.expr_());
+		this.expect_(Parser.IDENTIFIER, 'then');
+		args.push(this.expr_());
+	}
+
+	// ELSE <expr>
+	if (this.peek_(Parser.IDENTIFIER, 'else')) {
+		this.next_();
+		args.push(this.expr_());
+	}
+
+	// END
+	this.expect_(Parser.IDENTIFIER, 'end');
+
+	return new CaseExpr('case', args, expr);
+}
+
+Parser.prototype.if_ = function() {
+	const expr = null;
+	const args = [];
+
+	// IF <expr>
+	args.push(this.expr_());
+
+	// THEN <expr>
+	this.expect_(Parser.IDENTIFIER, 'then');
+	args.push(this.expr_());
+
+	// ELSE <expr>
+	if (this.peek_(Parser.IDENTIFIER, 'else')) {
+		this.next_();
+		args.push(this.expr_());
+	}
+
+	// END
+	this.expect_(Parser.IDENTIFIER, 'end');
+
+	return new CaseExpr('if', args, expr);
+}
+
+Parser.prototype.factor_ = function() {
+	var token = this.next_();
+	switch (token.type) {
+	case Parser.STRING:
+		return new ConstExpr(token.text.slice(1, -1).replace(/''/g, "'"));
+	case Parser.REFERENCE:
+		if (token.text.length < 3) {
+			throw SyntaxError("Empty identifier at position " + token.pos);
+		}
+		return new RefExpr(token.text.slice(1, -1).replace(/""/g, '"'));
+	case Parser.NUMBER:
+		return new ConstExpr(JSON.parse(token.text));
+	case Parser.DATE:
+		return new ConstExpr(new Date(token.text.slice(1, -1)));
+	case Parser.IDENTIFIER:
+		switch (token.text) {
+		case 'null':
+			return new ConstExpr(null);
+		case 'true':
+			return new ConstExpr(true);
+		case 'false':
+			return new ConstExpr(false);
+		case 'not':
+			return new FuncExpr(Expr.not, [this.expr_()], token.text);
+		case 'case':
+			return this.case_();
+		case 'if':
+			return this.if_();
+		default:
+			if (!this.peek_(Parser.SYMBOL, '(')) {
+				return new RefExpr(token.text);
+			}
+			return this.func_(token.text);
+		}
+	case Parser.SYMBOL:
+		switch(token.text) {
+		case '(': {
+			const e = this.expr_();
+			this.expect_(Parser.SYMBOL, ')');
+			return e;
+		}
+		default:
+			Parser.onUnexpected(token);
+		}
+	case Parser.OPERATOR:
+		switch (token.text) {
+		case '-':
+			// Unary minus
+			return new FuncExpr(Expr.negate, [this.expr_()], token.text);
+		case '+':
+			// Unary plus
+			return this.expr_();
+		default:
+			Parser.onUnexpected(token);
+		}
+	default:
+		Parser.onUnexpected(token);
+	}
+}
+
+Parser.prototype.infix_ = function() {
+	const token = this.tokens[this.next];
+	switch (token.type) {
+	case Parser.IDENTIFIER:
+		switch (token.text) {
+		case 'between':
+		case 'is':
+		case 'and':
+		case 'or':
+			break;
+		default:
+			return null;
+		}
+	case Parser.COMPARISON:
+	case Parser.OPERATOR:
+		break;
+	default:
+		return null;
+	}
+
+	this.next_();
+
+	return token.text;
+}
+
+function logStack(stack) {
+	stack.forEach((entry, e) => console.log(e, entry.op, entry.args.map(arg => '' + arg)));
+}
+
+Parser.prototype.expr_ = function() {
+	const factor = this.factor_();
+
+	const stack = [{op: null, args: [factor]}];
+
+	// Handle infix operations
+	while (true) {
+		var op = this.infix_();
+		if (!op) {
+			break;
+		}
+
+		// Finish parsing multi-token operations
+		if (op == 'is') {
+			// NOT
+			const negated = this.peek_(Parser.IDENTIFIER, 'not');
+			if (negated) {
+				this.next_();
+			}
+
+			const token = this.expect_(Parser.IDENTIFIER);
+			switch (token.text) {
+			case 'null': {
+				// NULL
+				//	Replace last argument with <arg> IS [NOT] NULL
+				const lhs = stack[stack.length - 1].args.pop();
+				op = negated ? 'isnotnull' : 'isnull';
+				stack[stack.length - 1].args.push(new FuncExpr(negated ? Expr.isnotnull : Expr.isnull, [lhs], op));
+				continue;
+			}
+			case 'distinct':
+				//	DISTINCT
+				this.expect_(Parser.IDENTIFIER, 'from');
+				op = negated ? 'isnotdistinct' : 'isdistinct';
+				break;
+			default:
+				Parser.onUnexpected(token);
+			}
+		}
+
+		// Replace unknown infix with the current one
+		if (!stack[stack.length - 1].op) {
+			stack[stack.length - 1].op = op;
+		}
+
+		// Get the RHS of the infix
+		const c = this.factor_();
+
+		// Handle the association precedence between the previous and current ops.
+		var prevOp = stack[stack.length - 1].op;
+		if (prevOp == 'between') {
+			// Special case <factor> BETWEEN <factor> AND <rhs>
+			switch (op) {
+			case 'between':
+			case 'and':
+				op = prevOp;
+				break;
+			default:
+				throw SyntaxError('Unexpected BETWEEN separator: ' + op);
+			}
+		}
+
+		// Associate arguments
+
+		// Left Associative (e.g., a * b + c)
+		// 	Pop the top of the stack and combine it into a single argument for the previous operand
+		while (Parser.precedence[prevOp] < Parser.precedence[op]) {
+			const top = stack.pop();
+			const ab = new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op);
+			if (stack.length > 1) {
+				stack[stack.length-1].args.push(ab);
+			} else {
+				stack.push({op: op, args: [ab]})
+			}
+			prevOp = stack[stack.length - 1].op;
+		}
+
+		// Fuse nested identical ops on the top of the stack
+		while (stack.length > 1 && stack[stack.length - 2].op == op) {
+			const args = stack.pop().args;
+			stack[stack.length - 1].args.push(...args);
+		}
+
+		if (prevOp == op) {
+			// Same infix op (e.g., a + b + c)
+			//	Extend top argument list
+			stack[stack.length-1].args.push(c);
+		} else {
+			// Right Associative (e.g., a + b * c)
+			// 	Start a new argument list for the higher precedence op
+			const b = stack[stack.length - 1].args.pop();
+			stack.push({op: op, args: [b, c]});
+		}
+	}
+
+	// Pop everything from the stack
+	while (stack.length > 1) {
+		const top = stack.pop();
+		stack[stack.length - 1].args.push(new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op));
+	}
+
+	const top = stack.pop();
+	if (top.op) {
+		top.args = [new FuncExpr(Parser.infixFunc[Parser.precedence[top.op]], top.args, top.op)];
+	}
+
+	return top.args.pop();
+}
+
+Parser.prototype.parse = function() {
+	const expr = this.expr_();
+	this.expect_(Parser.EOT);
+	return expr;
+}
+
+Parser.prototype.commas_ = function(func) {
+	const result = [func()];
+	while (this.peek_(Parser.SYMBOL, ',')) {
+		this.next_();
+		result.push(func());
+	}
+	this.expect_(Parser.EOT);
+	return result;
+}
+
+Parser.prototype.as_ = function(alias) {
+	if (!this.peek_(Parser.IDENTIFIER, 'as')) {
+		return alias;
+	}
+
+	this.next_();
+	if (this.peek_(Parser.REFERENCE)) {
+		return this.factor_().reference;
+	}
+
+	return this.expect_(Parser.IDENTIFIER).text;
+}
+
+Parser.prototype.aggr_ = function() {
+	const name = this.expect_(Parser.IDENTIFIER).text;
+	const aggr = Aggr[name];
+	if (!aggr) {
+    	const candidates = Object.keys(Aggr).filter(key => (key == key.toLowerCase()))
+    	const closest = Expr.topNLevenshtein(candidates, name, 1, 5);
+    	if (closest.length) {
+      	throw new SyntaxError("Unknown aggregate: " + name +
+      		'. Did you mean "' + closest[0].candidate.toUpperCase() + '"?');
+      } else {
+      	throw new SyntaxError("Unknown aggregate: '" + name);
+      }
+	}
+
+	const args = this.args_();
+	const options = {};
+	const func = new aggr(args, options);
+
+	return {func: func, as: this.as_(name)}
+}
+
+Parser.prototype.aggrs = function() {
+	return this.commas_(this.aggr_.bind(this));
+}
+
+Parser.prototype.select_ = function() {
+	const expr = this.expr_();
+	return {expr: expr, as: this.as_(expr.alias())};
+}
+
+Parser.prototype.selects = function() {
+	return this.commas_(this.select_.bind(this));
+}
+
+Parser.prototype.order_ = function() {
+	const result = {expr: this.expr_(), asc: true, nullsFirst: true};
+
+	// ASC/DESC or NULLS FIRST/LAST
+	while (this.peek_(Parser.IDENTIFIER)) {
+		var token = this.expect_(Parser.IDENTIFIER);
+		switch (token.text) {
+		case 'asc':
+		case 'desc':
+			result.asc = (token.text == 'asc');
+			break;
+		case 'nulls':
+			token = this.expect_(Parser.IDENTIFIER);
+			switch (token.text) {
+			case 'first':
+			case 'last':
+				result.nullsFirst = (token.text == 'first');
+				break;
+			default:
+				throw SyntaxError('Unexpected NULLS qualifier: ' + token.text);
+			}
+			break;
+		default:
+			throw SyntaxError('Unexpected ORDER BY qualifier: ' + token.text);
+		}
+	}
+
+	return result;
+}
+
+Parser.prototype.orders = function() {
+	return this.commas_(this.order_.bind(this));
+}
+
+/**
+ * Node exports
+ */
+if (typeof module !== 'undefined') {
+  module.exports  = {
+    Parser
+  }
+};
+
 /**
  * This module implements a relational pipeline tookit
  * for manipulating Google Sheets using App Script.
@@ -893,6 +1598,9 @@ if (typeof Column === 'undefined') {
 if (typeof ConstExpr === 'undefined') {
   const expr = require("./expr");
   ConstExpr = expr.ConstExpr;
+}
+if (typeof Parser === 'undefined') {
+  Parser = require("./parser").Parser;
 }
 
 /**
@@ -1366,14 +2074,17 @@ Table.prototype.getColumn = function(name) {
  * Eventually, they should be expressions
  * not just column references.
  *
- * @param {Array} expressions - An ordered list of expressions and aliases.
+ * @param {Array} selects - An ordered list of expressions and aliases.
  * @returns {Table}
  */
-Table.prototype.select = function(expressions) {
+Table.prototype.select = function(selects) {
   const namespace = {};
   const ordinals = [];
   const that = this;
-  expressions
+  if (typeof selects == 'string') {
+  	selects = new Parser(selects).selects();
+  }
+  selects
   	.map(expr => Table.normaliseBinding(expr))
   	.forEach(function(expr) {
 			ordinals.push(expr.as);
@@ -1392,7 +2103,10 @@ Table.prototype.select = function(expressions) {
  */
 Table.prototype.where = function(predicate) {
   // Normalise arguments
-   if (predicate.expr) {
+  if (typeof predicate == 'string') {
+  	predicate = new Parser(predicate).parse();
+  }
+  if (predicate.expr) {
     predicate = predicate.expr;
   }
   predicate = Table.normalise(predicate);
@@ -1474,13 +2188,56 @@ Table.prototype.unionAll = function(second, options_p) {
 }
 
 /**
+ * Convert a join predicate to a set of equi-join keys
+ *
+ * @param {Expr} predicate - The predicate to convert
+ * @returns {Object} The key pairs for an equi-join, or null
+ */
+Table.equiJoinKeys = function(predicate) {
+	if (predicate.type != 'function') {
+		return null;
+	}
+
+	// Handle single comparison by faking unary AND
+	var args = predicate.args;
+	switch (predicate.fname) {
+	case '=':
+	case 'isnotdistinct':
+		args = [predicate];
+		break;
+	case 'and':
+		break;
+	default:
+		return null;
+	}
+
+	const keys = [];
+	for (var i = 0; i < args.length; ++i) {
+		const arg = args[i];
+		if (arg.type != 'function') {
+			return null;
+		}
+		switch (arg.fname) {
+		case '=':
+		case 'isnotdistinct':
+			keys.push({left: arg.args[0], right: arg.args[1], distinct: (arg.fname != '=')});
+			break;
+		default:
+			return null;
+		}
+	}
+
+	return keys;
+}
+
+/**
  * Implements a relational equi-join, which is a join where all the predicates
  * are AND-ed and involve equality of key pairs, one from each table.
  * This is the most common kind of join, and is used for looking up data,
  * or connecting tables with primary/foreign key matches.
  *
  * @param {Table} build - The right hand side (smaller) table.
- * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>}, ...]
+ * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>, distinct: <Boolean>}, ...]
  * @param {Object} options - Join options
  * @returns {Table}
  *
@@ -1497,12 +2254,16 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const rightOuter = options.type in {right: null, full: null};
 
   // Normalise the arguments
+  if (typeof keys == 'string') {
+  	keys = Table.equiJoinKeys(new Parser(keys).parse());
+  }
   if (!Array.isArray(keys)) {
     keys = [keys,];
   };
   keys = keys.map(pair => ({
     build: Table.normaliseExpr(pair.build || pair.right),
-    probe: Table.normaliseExpr(pair.probe || pair.left)
+    probe: Table.normaliseExpr(pair.probe || pair.left),
+    distinct: pair.distinct || false
   }));
   const probe = this;
 
@@ -1520,7 +2281,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
   const buildMatches = {};
   const ht = build.selection.reduce(function (ht, val, buildID) {
-    const key = JSON.stringify(buildKeys.map(result => result.data[buildID]));
+  	//	Only insert nulls for distinct comparisons.
+  	const values = buildKeys.map(result => result.data[buildID]);
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return ht;
+  	}
+    const key = JSON.stringify(values);
     const rows = ht.get(key);
     if (rows) {
       rows.push(buildID);
@@ -1534,7 +2300,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection, probe.length));
   const probeMatches = {}
   probe.selection.forEach(function (val, probeID) {
-    const key = JSON.stringify(probeKeys.map(result => result.data[probeID]));
+  	const values = probeKeys.map(result => result.data[probeID]);
+  	//	Only check nulls for distinct comparisons.
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return;
+  	}
+    const key = JSON.stringify(values);
     const matches = ht.get(key);
     if (matches) {
       probeMatches[probeID] = matches;
@@ -1623,12 +2394,18 @@ Table.normaliseAggr = function(aggr) {
 Table.prototype.groupby = function(groups, aggrs) {
   // Normalise the inputs
   groups = groups || [];
+  if (typeof groups == 'string') {
+  	groups = new Parser(groups).selects()
+  }
   if (groups && !Array.isArray(groups)) {
     groups = [groups,];
   }
   groups = groups.map(group => Table.normaliseBinding(group));
 
   aggrs = aggrs || [];
+  if (typeof aggrs == 'string') {
+  	aggrs = new Parser(aggrs).aggrs()
+  }
   if (aggrs && !Array.isArray(aggrs)) {
     aggrs = [aggrs,];
   }
@@ -1707,6 +2484,9 @@ Table.normaliseOrder = function(order) {
  */
 Table.prototype.orderby = function(orders) {
   // Normalize arguments
+  if (typeof orders == 'string') {
+  	orders = new Parser(orders).orders();
+  }
   orders = orders || [];
   if (!Array.isArray(orders)) {
     orders = [orders,];

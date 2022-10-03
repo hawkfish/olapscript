@@ -29,13 +29,18 @@
  *
  */
 class Aggr {
-	constructor(args, options) {
+	constructor(args, options, fname) {
+		this.fname = fname || 'Aggr';
 		args = args || [];
 		if (!Array.isArray(args)) {
 			args = [args];
 		}
 		this.args = args;
 		this.options = options || {};
+	}
+
+	toString() {
+		return this.fname.toUpperCase() + "(" + this.args.map(arg => arg.toString()).join(", ") + ")";
 	}
 
 	initialize() {
@@ -56,8 +61,8 @@ class Aggr {
  *
  */
 class CountStar extends Aggr {
-  constructor(options) {
-  	super([], options);
+  constructor(args, options) {
+  	super(args, options, 'countstar');
   }
 
 	initialize() {
@@ -78,6 +83,10 @@ class CountStar extends Aggr {
  *
  */
 class Count extends Aggr {
+  constructor(arg, options) {
+  	super([arg], options, 'count');
+  }
+
 	initialize() {
 		return Object.assign(super.initialize(), {count: 0});
 	}
@@ -97,7 +106,7 @@ class Count extends Aggr {
  */
 class Sum extends Aggr {
   constructor(args, options) {
-    super(args, options);
+    super(args, options, 'sum');
   }
 
 	initialize() {
@@ -124,6 +133,11 @@ class Sum extends Aggr {
  *
  */
 class Avg extends Sum {
+  constructor(args, options) {
+    super(args, options);
+    this.fname = 'avg';
+  }
+
 	initialize() {
 		return Object.assign(super.initialize(), {count: 0});
 	}
@@ -147,8 +161,8 @@ class Avg extends Sum {
  *
  */
 class ValueAggr extends Aggr {
-	constructor(selector, args, options) {
-		super(args, options);
+	constructor(selector, args, options, fname) {
+		super(args, options, fname);
 		this.selector = selector;
 	}
 
@@ -181,7 +195,7 @@ class ValueAggr extends Aggr {
  */
 class Min extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => ((a < b) ? a : b), args, options);
+		super((a,b) => ((a < b) ? a : b), args, options, 'min');
 	}
 };
 
@@ -194,7 +208,7 @@ class Min extends ValueAggr {
  */
 class Max extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => ((a > b) ? a : b), args, options);
+		super((a,b) => ((a > b) ? a : b), args, options, 'max');
 	}
 };
 
@@ -207,7 +221,7 @@ class Max extends ValueAggr {
  */
 class First extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => a, args, options);
+		super((a,b) => a, args, options, 'first');
 	}
 };
 
@@ -220,7 +234,7 @@ class First extends ValueAggr {
  */
 class Last extends ValueAggr {
 	constructor(args, options) {
-		super((a,b) => b, args, options);
+		super((a,b) => b, args, options, 'last');
 	}
 };
 
@@ -232,6 +246,10 @@ class Last extends ValueAggr {
  *
  */
 class ArrayAgg extends Aggr {
+	constructor(args, options) {
+		super(args, options, 'arrayagg');
+	}
+
 	initialize() {
 		return Object.assign(super.initialize(), {value: null});
 	}
@@ -263,19 +281,30 @@ class StringAgg extends ValueAggr {
 		const sep = arg2.constant || ',';
 
 		//	Only pass on the first argument
-		super((a, b) => (a + sep + b), [args[0]], options);
+		super((a, b) => (a + sep + b), [args[0]], options, 'stringagg');
 		this.sep = sep;
 	}
 };
+
+Aggr.countstar = CountStar;
+Aggr.count = Count;
+
+Aggr.sum = Sum;
+Aggr.avg = Avg;
+
+Aggr.min = Min;
+Aggr.max = Max;
+Aggr.first = First;
+Aggr.last = Last;
+
+Aggr.arrayagg = ArrayAgg;
+Aggr.stringagg = StringAgg;
 
 /**
  * Node exports
  */
 if (typeof module !== 'undefined') {
   module.exports  = {
-    Aggr, CountStar, Count,
-    Sum, Avg,
-    Min, Max, First, Last,
-    StringAgg, ArrayAgg
+    Aggr
   };
 };

@@ -97,14 +97,19 @@ Expr.topNLevenshtein = function(strings, target, n = 5, threshold = 5) {
  * @param {Array} args - The input expressions for the function call.
  */
 class FuncExpr extends Expr {
-  constructor(func, args) {
+  constructor(func, args, fname) {
     super('function');
     this.func = func;
     this.args = args;
+    this.fname = fname || 'FuncExpr';
   }
 
+	toString() {
+		return this.fname.toUpperCase() + "(" + this.args.map(arg => String(arg)).join(", ") + ")";
+	}
+
   alias() {
-    return this.func.name + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
+    return this.fname + "(" + this.args.map(arg => arg.alias()).join(", ") + ")";
   }
 }
 
@@ -142,11 +147,7 @@ class RefExpr extends Expr {
   }
 
   toString() {
-  	if (this.reference.includes(' ')) {
-    	return '"' + this.reference + '"';
-    } else {
-    	return this.reference;
-    }
+  	return RefExpr.encode(this.reference);
   }
 
   alias() {
@@ -168,6 +169,10 @@ class RefExpr extends Expr {
   }
 }
 
+RefExpr.encode = function(r) {
+  	return '"' + r.replace(/"/g, '""') + '"';
+}
+
 /**
  * A class for modelling constant scalars
  *
@@ -178,9 +183,19 @@ class ConstExpr extends Expr {
     super('constant');
     this.constant = constant;
     this.datatype = typeof constant;
+    if (constant instanceof Date) {
+    	this.datatype = 'date';
+    }
   }
 
   toString() {
+  	switch (this.datatype) {
+  	case 'string':
+  		return "'" + this.constant.replace(/'/g, "''") + "'";
+  	case 'date':
+  		return '#' + this.constant.toISOString() + '#';
+		}
+
     return String(this.constant);
   }
 
@@ -196,37 +211,46 @@ class ConstExpr extends Expr {
 /**
  * A class for handling case statements with short circuiting
  *
- * @param {Array} args - The input expressions for the function call.
+ * @param {String} type - The type of case ('case' or 'if').
+ * @param {Array} args - The input expressions for the case.
  * @param {Function} expr - The optional case value expression.
  */
 class CaseExpr extends Expr {
-	constructor(args, expr) {
-		super('case');
+	constructor(type, args, expr) {
+		super(type.toLowerCase());
 		this.expr = expr;
 		this.args = args;
 		// Add a missing else clause
-		if (args.length % 2 == 0) {
+		if (this.args.length % 2 == 0) {
 			this.args.push(new ConstExpr(null));
 		}
 	}
 
 	toString() {
-		var result = 'case';
+		if (this.type == 'if') {
+			return 'IF ' + this.args[0].toString()
+					 + '\nTHEN ' + this.args[1].toString()
+					 + '\nELSE ' + this.args[2].toString()
+					 + '\nEND'
+					 ;
+		}
+
+		var result = 'CASE';
 		if (this.expr) {
-			result += ' ' + this.expr.alias();
+			result += ' ' + this.expr.toString();
 		}
 		var a = 0;
 		while (a < this.args.length - 1) {
-			result += ' when ' + this.args[a++].alias();
-			result += ' then ' + this.args[a++].alias();
+			result += ' WHEN ' + this.args[a++].toString();
+			result += ' THEN ' + this.args[a++].toString();
 		}
-		result += ' else ' + this.args[a++].alias() + ' end';
+		result += ' ELSE ' + this.args[a++].toString() + ' END';
 
 		return result;
 	}
 
 	alias() {
-		return "case";
+		return this.type;
 	}
 
 	evaluate(namespace, selection, length) {

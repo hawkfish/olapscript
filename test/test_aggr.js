@@ -2,17 +2,15 @@ const expect = require ("chai").expect;
 const aggr = require('../src/aggr');
 const expr = require('../src/expr');
 
-const CountStar = aggr.CountStar;
-const Count = aggr.Count;
-const Sum = aggr.Sum;
-const Avg = aggr.Avg;
+const Aggr = aggr.Aggr;
 
 describe('Aggr', function() {
   describe('CountStar', function() {
+		const CountStar = Aggr.countstar;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
-      		const options = {option: 1};
-        const e = new CountStar(options);
+      	const options = {option: 1};
+        const e = new CountStar([], options);
         expect(e.args).to.deep.equal([]);
         expect(e.options).deep.equal(options);
       });
@@ -41,11 +39,13 @@ describe('Aggr', function() {
       });
     });
   });
+
   describe('Count', function() {
+  	const Count = Aggr.count;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
-      		const arg = "arg";
-      		const options = {option: 1};
+				const arg = "arg";
+				const options = {option: 1};
         const e = new Count(arg, options);
         expect(e.args).to.deep.equal([arg]);
         expect(e.options).deep.equal(options);
@@ -53,9 +53,9 @@ describe('Aggr', function() {
     });
     describe('initialize', function() {
       it('should create an empty state', function() {
-        const e = new Sum();
+        const e = new Count();
         const state = e.initialize();
-        expect(state.sum).to.be.null;
+        expect(state.count).to.be.equal(0);
       });
     });
     describe('update', function() {
@@ -101,7 +101,9 @@ describe('Aggr', function() {
       });
     });
   });
+
   describe('Sum', function() {
+  	const Sum = Aggr.sum;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
       		const arg = "arg";
@@ -175,6 +177,7 @@ describe('Aggr', function() {
   });
 
   describe('Avg', function() {
+  	const Avg = Aggr.avg;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
       		const arg = "arg";
@@ -253,7 +256,7 @@ describe('Aggr', function() {
   });
 
   describe('Min', function() {
-		const Min = aggr.Min;
+		const Min = Aggr.min;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
 				const arg = "arg";
@@ -379,7 +382,7 @@ describe('Aggr', function() {
  	});
 
   describe('Max', function() {
-    const Max = aggr.Max;
+    const Max = Aggr.max;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
         const arg = "arg";
@@ -505,7 +508,7 @@ describe('Aggr', function() {
   });
 
   describe('First', function() {
-    const First = aggr.First;
+    const First = Aggr.first;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
         const arg = "arg";
@@ -634,7 +637,7 @@ describe('Aggr', function() {
   });
 
   describe('Last', function() {
-    const Last = aggr.Last;
+    const Last = Aggr.last;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
         const arg = "arg";
@@ -764,7 +767,7 @@ describe('Aggr', function() {
   });
 
   describe('ArrayAgg', function() {
-    const ArrayAgg = aggr.ArrayAgg;
+    const ArrayAgg = Aggr.arrayagg;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
         const arg = "arg";
@@ -866,7 +869,7 @@ describe('Aggr', function() {
   });
 
   describe('StringAgg', function() {
-    const StringAgg = aggr.StringAgg;
+    const StringAgg = Aggr.stringagg;
     describe('constructor', function() {
       it('should store the arguments and options', function() {
         const args = ["arg", new ConstExpr("sep")];

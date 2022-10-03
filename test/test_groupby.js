@@ -1,12 +1,12 @@
 const expect = require ("chai").expect;
 const Table = require('../src/table').Table;
 const expr = require('../src/expr');
-const aggr = require('../src/aggr');
-const RefExpr = expr.RefExpr;
-const CountStar = aggr.CountStar;
-const Avg = aggr.Avg;
+const Aggr = require('../src/aggr').Aggr;
+
 
 describe('Table', function() {
+	const CountStar = Aggr.countstar;
+	const Avg = Aggr.avg;
   describe('Group By', function() {
 		const bedrock = [
 			{first: "Fred", last: "Flintstone", age: 38},
@@ -74,6 +74,23 @@ describe('Table', function() {
     	const actual = Table
     		.fromRows(bedrock)
     		.groupBy([{expr: new RefExpr("last"), as: "family"}], {func: new Avg(new RefExpr("age"))});
+    	expect(actual.ordinals).to.deep.equal(["family", "Avg"]);
+    	expect(actual.namespace).to.have.keys(actual.ordinals);
+    	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
+    	expect(actual.namespace.Avg.data).to.deep.equal([25, 24]);
+  	});
+
+    it('should remove duplicates from a group by clause', function() {
+    	const actual = Table.fromRows(bedrock).groupBy('"last" AS "family"');
+    	expect(actual.ordinals).to.deep.equal(["family"]);
+    	expect(actual.namespace).to.have.keys(actual.ordinals);
+    	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);
+  	});
+
+    it('should compute aggregates from an agregate clause', function() {
+    	const actual = Table
+    		.fromRows(bedrock)
+    		.groupBy('"last" AS "family"', 'AVG("age") AS "Avg"');
     	expect(actual.ordinals).to.deep.equal(["family", "Avg"]);
     	expect(actual.namespace).to.have.keys(actual.ordinals);
     	expect(actual.namespace.family.data).to.deep.equal(["Flintstone", "Rubble"]);

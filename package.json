@@ -2,7 +2,9 @@
   "name": "olapscript",
   "version": "0.2.0",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "appscript": "cat src/column.js src/expr.js src/aggr.js src/parser.js src/table.js > olapscript.gs",
+    "validate": "cat src/column.js src/expr.js src/aggr.js src/parser.js src/table.js | diff -q - olapscript.gs"
   },
   "description": "An OLAP engine for Google App Script",
   "main": "olap-script.js",

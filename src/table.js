@@ -63,6 +63,9 @@ if (typeof ConstExpr === 'undefined') {
   const expr = require("./expr");
   ConstExpr = expr.ConstExpr;
 }
+if (typeof Parser === 'undefined') {
+  Parser = require("./parser").Parser;
+}
 
 /**
  * A table class for performing relational operations on Google Sheets
@@ -535,14 +538,17 @@ Table.prototype.getColumn = function(name) {
  * Eventually, they should be expressions
  * not just column references.
  *
- * @param {Array} expressions - An ordered list of expressions and aliases.
+ * @param {Array} selects - An ordered list of expressions and aliases.
  * @returns {Table}
  */
-Table.prototype.select = function(expressions) {
+Table.prototype.select = function(selects) {
   const namespace = {};
   const ordinals = [];
   const that = this;
-  expressions
+  if (typeof selects == 'string') {
+  	selects = new Parser(selects).selects();
+  }
+  selects
   	.map(expr => Table.normaliseBinding(expr))
   	.forEach(function(expr) {
 			ordinals.push(expr.as);
@@ -561,7 +567,10 @@ Table.prototype.select = function(expressions) {
  */
 Table.prototype.where = function(predicate) {
   // Normalise arguments
-   if (predicate.expr) {
+  if (typeof predicate == 'string') {
+  	predicate = new Parser(predicate).parse();
+  }
+  if (predicate.expr) {
     predicate = predicate.expr;
   }
   predicate = Table.normalise(predicate);
@@ -643,13 +652,56 @@ Table.prototype.unionAll = function(second, options_p) {
 }
 
 /**
+ * Convert a join predicate to a set of equi-join keys
+ *
+ * @param {Expr} predicate - The predicate to convert
+ * @returns {Object} The key pairs for an equi-join, or null
+ */
+Table.equiJoinKeys = function(predicate) {
+	if (predicate.type != 'function') {
+		return null;
+	}
+
+	// Handle single comparison by faking unary AND
+	var args = predicate.args;
+	switch (predicate.fname) {
+	case '=':
+	case 'isnotdistinct':
+		args = [predicate];
+		break;
+	case 'and':
+		break;
+	default:
+		return null;
+	}
+
+	const keys = [];
+	for (var i = 0; i < args.length; ++i) {
+		const arg = args[i];
+		if (arg.type != 'function') {
+			return null;
+		}
+		switch (arg.fname) {
+		case '=':
+		case 'isnotdistinct':
+			keys.push({left: arg.args[0], right: arg.args[1], distinct: (arg.fname != '=')});
+			break;
+		default:
+			return null;
+		}
+	}
+
+	return keys;
+}
+
+/**
  * Implements a relational equi-join, which is a join where all the predicates
  * are AND-ed and involve equality of key pairs, one from each table.
  * This is the most common kind of join, and is used for looking up data,
  * or connecting tables with primary/foreign key matches.
  *
  * @param {Table} build - The right hand side (smaller) table.
- * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>}, ...]
+ * @param {Array} keys - The key expression pairs [{build: <expr>, probe: <expr>, distinct: <Boolean>}, ...]
  * @param {Object} options - Join options
  * @returns {Table}
  *
@@ -666,12 +718,16 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const rightOuter = options.type in {right: null, full: null};
 
   // Normalise the arguments
+  if (typeof keys == 'string') {
+  	keys = Table.equiJoinKeys(new Parser(keys).parse());
+  }
   if (!Array.isArray(keys)) {
     keys = [keys,];
   };
   keys = keys.map(pair => ({
     build: Table.normaliseExpr(pair.build || pair.right),
-    probe: Table.normaliseExpr(pair.probe || pair.left)
+    probe: Table.normaliseExpr(pair.probe || pair.left),
+    distinct: pair.distinct || false
   }));
   const probe = this;
 
@@ -689,7 +745,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
   const buildMatches = {};
   const ht = build.selection.reduce(function (ht, val, buildID) {
-    const key = JSON.stringify(buildKeys.map(result => result.data[buildID]));
+  	//	Only insert nulls for distinct comparisons.
+  	const values = buildKeys.map(result => result.data[buildID]);
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return ht;
+  	}
+    const key = JSON.stringify(values);
     const rows = ht.get(key);
     if (rows) {
       rows.push(buildID);
@@ -703,7 +764,12 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection, probe.length));
   const probeMatches = {}
   probe.selection.forEach(function (val, probeID) {
-    const key = JSON.stringify(probeKeys.map(result => result.data[probeID]));
+  	const values = probeKeys.map(result => result.data[probeID]);
+  	//	Only check nulls for distinct comparisons.
+  	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
+  		return;
+  	}
+    const key = JSON.stringify(values);
     const matches = ht.get(key);
     if (matches) {
       probeMatches[probeID] = matches;
@@ -792,12 +858,18 @@ Table.normaliseAggr = function(aggr) {
 Table.prototype.groupby = function(groups, aggrs) {
   // Normalise the inputs
   groups = groups || [];
+  if (typeof groups == 'string') {
+  	groups = new Parser(groups).selects()
+  }
   if (groups && !Array.isArray(groups)) {
     groups = [groups,];
   }
   groups = groups.map(group => Table.normaliseBinding(group));
 
   aggrs = aggrs || [];
+  if (typeof aggrs == 'string') {
+  	aggrs = new Parser(aggrs).aggrs()
+  }
   if (aggrs && !Array.isArray(aggrs)) {
     aggrs = [aggrs,];
   }
@@ -876,6 +948,9 @@ Table.normaliseOrder = function(order) {
  */
 Table.prototype.orderby = function(orders) {
   // Normalize arguments
+  if (typeof orders == 'string') {
+  	orders = new Parser(orders).orders();
+  }
   orders = orders || [];
   if (!Array.isArray(orders)) {
     orders = [orders,];
