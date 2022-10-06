@@ -101,6 +101,19 @@ class SQLDate {
 	}
 };
 
+SQLDate.fromDate = function(ts) {
+	if (!(ts instanceof Date)) {
+		return ts;
+	}
+	if (ts.toISOString().indexOf('00:00:00.000') != -1) {
+		return new SQLDate(ts.getUTCFullYear(), ts.getUTCMonth(), ts.getUTCDate());
+	}
+	if (ts.getHours() || ts.getMinutes() || ts.getSeconds() || ts.getMilliseconds()) {
+		return ts;
+	}
+	return new SQLDate(ts.getFullYear(), ts.getMonth(), ts.getDate());
+}
+
 /**
  * Node exports
  */
@@ -1667,6 +1680,9 @@ if (typeof ConstExpr === 'undefined') {
 if (typeof Parser === 'undefined') {
   Parser = require("./parser").Parser;
 }
+if (typeof SQLDate === 'undefined') {
+  SQLDate = require("./timestamp").SQLDate;
+}
 
 /**
  * A table class for performing relational operations on Google Sheets
@@ -1901,9 +1917,14 @@ Table.fromSheet = function(sheet, options_p) {
 
 		// Pivot the data into columns
 		for (var c = 0; c < valueRange.getNumColumns(); ++c) {
-			const data = Array.from(values, row => row[c]);
-			const name = ordinals[c];
+			const raw = Array.from(values, row => row[c]);
+			var data = raw;
+			const dates = raw.map(d => SQLDate.fromDate(d));
+			if (dates.filter((d, i) => ((d !== raw[i]) || (d == null))).length == raw.length) {
+				data = dates;
+			}
 			const type = undefined;
+			const name = ordinals[c];
 			const col = new Column(type, data);
 			namespace[name] = col;
 		}

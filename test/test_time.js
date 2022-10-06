@@ -69,6 +69,30 @@ describe('SQLDate', function() {
 			expect(hi > lo).to.be.true;
 		});
 	});
+	describe('fromDate', function() {
+		it('should detect UTC dates', function() {
+			const setup = new Date(Date.UTC(2022, 9, 5))
+			const expected = new SQLDate(setup.getUTCFullYear(), setup.getUTCMonth(), setup.getUTCDate());
+			const actual = SQLDate.fromDate(setup);
+			expect(actual.valueOf()).to.equal(expected.valueOf());
+		});
+		it('should detect local dates', function() {
+			const setup = new Date(2022, 9, 5)
+			const expected = new SQLDate(setup.getFullYear(), setup.getMonth(), setup.getDate());
+			const actual = SQLDate.fromDate(setup);
+			expect(actual.valueOf()).to.equal(expected.valueOf());
+		});
+		it('should ignore non-date timestamps', function() {
+			const setup = new Date(2022, 9, 5, 20, 23,41)
+			const actual = SQLDate.fromDate(setup);
+			expect(actual).to.equal(setup);
+		});
+		it('should ignore non-dates', function() {
+			const setup = "string";
+			const actual = SQLDate.fromDate(setup);
+			expect(actual).to.equal(setup);
+		});
+	});
 });
 
 describe('Date functions', function() {

@@ -55,6 +55,19 @@ class SQLDate {
 	}
 };
 
+SQLDate.fromDate = function(ts) {
+	if (!(ts instanceof Date)) {
+		return ts;
+	}
+	if (ts.toISOString().indexOf('00:00:00.000') != -1) {
+		return new SQLDate(ts.getUTCFullYear(), ts.getUTCMonth(), ts.getUTCDate());
+	}
+	if (ts.getHours() || ts.getMinutes() || ts.getSeconds() || ts.getMilliseconds()) {
+		return ts;
+	}
+	return new SQLDate(ts.getFullYear(), ts.getMonth(), ts.getDate());
+}
+
 /**
  * Node exports
  */
