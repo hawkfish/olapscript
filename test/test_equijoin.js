@@ -194,5 +194,29 @@ describe('Table', function() {
           expect(joined.namespace[name].data[selid], name).to.equal(dim_rows[pk-1][name]);
         })));
     });
+    it('should handle selections on both sides', function() {
+    	const predicate = `"First" = '' OR "Last" = ''`;
+    	const ifl_rows = [
+				{ID: 'xyzzy',	First: 'Ellen',	Last: 'R'},
+				{ID: 'xyzzz',	First: '',	Last: 'R'},
+				{ID: 'xyyyy',	First: '',	Last: 'R'}
+				];
+			const ifl = Table.fromRows(ifl_rows).where(predicate);
+
+			const fle_rows = [
+				{First: 'Ellen',	Last: 'R',	Email: 'er@er.er'},
+				{First: '',	Last: 'R',	Email: 'ab@cd.ef'},
+				{First: '',	Last: 'R',	Email: 'gh@ij.kl'}
+			];
+			const fle = Table.fromRows(fle_rows).where(predicate);
+
+			const actual = ifl.equiJoin(fle, '"First" = "First" AND "Last" = "Last"');
+			expect(actual.getRowCount()).to.equal(4);
+			expect(actual.ordinals).to.deep.equal(['ID', 'First', 'Last', 'Email']);
+			expect(actual.namespace['ID'].data).to.deep.equal([ 'xyzzz', 'xyzzz', 'xyyyy', 'xyyyy' ]);
+			expect(actual.namespace['First'].data).to.deep.equal(['', '', '', '']);
+			expect(actual.namespace['Last'].data).to.deep.equal(['R', 'R', 'R', 'R']);
+			expect(actual.namespace['Email'].data).to.deep.equal([ 'ab@cd.ef', 'gh@ij.kl', 'ab@cd.ef', 'gh@ij.kl' ]);
+    });
   });
 });

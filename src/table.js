@@ -744,7 +744,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   // Build keys => expr
   const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
   const buildMatches = {};
-  const ht = build.selection.reduce(function (ht, val, buildID) {
+  const ht = build.selection.reduce(function (ht, buildID) {
   	//	Only insert nulls for distinct comparisons.
   	const values = buildKeys.map(result => result.data[buildID]);
   	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
@@ -763,7 +763,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   // Probe the hash table and emit the new values
   const probeKeys = keys.map(pair => pair.probe.evaluate(probe.namespace, probe.selection, probe.length));
   const probeMatches = {}
-  probe.selection.forEach(function (val, probeID) {
+  probe.selection.forEach(function (probeID) {
   	const values = probeKeys.map(result => result.data[probeID]);
   	//	Only check nulls for distinct comparisons.
   	if (values.filter((value, i) => (value == null && !keys[i].distinct)).length) {
