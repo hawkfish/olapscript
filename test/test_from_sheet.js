@@ -358,6 +358,26 @@ describe('Table', function() {
       	}
       });
     });
+    it('should strip trailing spaces from column names', function() {
+      const dupes = [
+        ['Name', 'Last  ', 'Age ', 'Nick Name'],
+        ['Joseph', 'Blow', 27, 'Joe'],
+        ['Mary', 'Smith', 32, 'Mary'],
+        ['Duplicate', 'Earl', 61, 'Dupe']
+      ];
+      const actual = Table.fromSheet(new Sheet('Duplicates', dupes));
+      expect(actual.ordinals).to.deep.equal(['Name', 'Last', 'Age', 'Nick Name']);
+      expect(actual.getRowCount()).to.equal(dupes.length - 1);
+      expect(actual.selection.length).to.equal(dupes.length - 1);
+      actual.selection.forEach((selid, rowid) => expect(selid).to.equal(rowid));
+      actual.ordinals.forEach(function(name, colid) {
+        const data = actual.namespace[name].data;
+        expect(data.length).to.equal(dupes.length - 1);
+        actual.selection.forEach(function(selid) {
+          expect(data[selid]).to.equal(dupes[selid+1][colid]);
+        });
+      });
+    });
   });
 });
 

@@ -278,6 +278,9 @@ Table.fromSheet = function(sheet, options_p) {
     header = header.map((name, colno) => name ? name : Table.defaultColumnName(colno));
   }
 
+	// Strip trailing spaces
+	header = header.map(name => name.replace(/[\s]+$/, ""));
+
   // Create unique column names
   const unique = header.reduce((unique, key) => (unique[key] = 0, unique), {});
   const ordinals = header.map(function(header) {
