@@ -43,31 +43,6 @@ describe('SQLDate', function() {
 			expect(actual.valueOf()).to.equal(-162691200);
 			expect(actual.toString()).to.equal('1964-11-05');
 		});
-		it('should compare dates', function() {
-			const lo = new SQLDate(2012, 5, 15);
-			const hi = new SQLDate(2022, 9, 4);
-
-			expect(lo < lo).to.be.false;
-			expect(lo <= lo).to.be.true;
-			expect(lo != lo).to.be.false;
-			expect(lo == hi).to.be.false;
-			expect(lo >= lo).to.be.true;
-			expect(lo > lo).to.be.false;
-
-			expect(lo < hi).to.be.true;
-			expect(lo <= hi).to.be.true;
-			expect(lo != hi).to.be.true;
-			expect(lo == hi).to.be.false;
-			expect(lo >= hi).to.be.false;
-			expect(lo > hi).to.be.false;
-
-			expect(hi < lo).to.be.false;
-			expect(hi <= lo).to.be.false;
-			expect(hi == lo).to.be.false;
-			expect(hi != lo).to.be.true;
-			expect(hi >= lo).to.be.true;
-			expect(hi > lo).to.be.true;
-		});
 	});
 	describe('fromDate', function() {
 		it('should detect UTC dates', function() {
@@ -91,6 +66,33 @@ describe('SQLDate', function() {
 			const setup = "string";
 			const actual = SQLDate.fromDate(setup);
 			expect(actual).to.equal(setup);
+		});
+	});
+	describe('valueOf', function() {
+		it('should compare values', function() {
+			const lo = new SQLDate(2012, 5, 15);
+			const hi = new SQLDate(2022, 9, 4);
+
+			expect(lo < lo).to.be.false;
+			expect(lo <= lo).to.be.true;
+			expect(lo != lo).to.be.false;
+			expect(lo == hi).to.be.false;
+			expect(lo >= lo).to.be.true;
+			expect(lo > lo).to.be.false;
+
+			expect(lo < hi).to.be.true;
+			expect(lo <= hi).to.be.true;
+			expect(lo != hi).to.be.true;
+			expect(lo == hi).to.be.false;
+			expect(lo >= hi).to.be.false;
+			expect(lo > hi).to.be.false;
+
+			expect(hi < lo).to.be.false;
+			expect(hi <= lo).to.be.false;
+			expect(hi == lo).to.be.false;
+			expect(hi != lo).to.be.true;
+			expect(hi >= lo).to.be.true;
+			expect(hi > lo).to.be.true;
 		});
 	});
 });
