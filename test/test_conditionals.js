@@ -3,6 +3,8 @@
 const expect = require ("chai").expect;
 const expr = require('../src/expr');
 const Expr = expr.Expr;
+const timestamp = require('../src/timestamp');
+const SQLDate = timestamp.SQLDate;
 
 describe('Conditional functions', function() {
 	// Ordered test data
@@ -39,6 +41,42 @@ describe('Conditional functions', function() {
 				});
 			});
 		});
+
+		it('should compare semantically equal Dates', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.false;
+		});
+
+		it('should compare semantically equal SQLDates', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.false;
+		});
 	});
 
 	describe('ne', function() {
@@ -65,6 +103,42 @@ describe('Conditional functions', function() {
 					expect(f(null, val), type).to.be.null;
 				});
 			});
+		});
+
+		it('should compare semantically unequal Dates', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.true;
+		});
+
+		it('should compare semantically unequal SQLDates', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.true;
 		});
 	});
 
@@ -93,6 +167,42 @@ describe('Conditional functions', function() {
 				});
 			});
 		});
+
+		it('should compare Dates semantically', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.true;
+		});
+
+		it('should compare SQLDates semantically', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.true;
+		});
 	});
 
 	describe('le', function() {
@@ -119,6 +229,42 @@ describe('Conditional functions', function() {
 					expect(f(null, val), type).to.be.null;
 				});
 			});
+		});
+
+		it('should compare Dates semantically', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.true;
+		});
+
+		it('should compare SQLDates semantically', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.false;
+			expect(f(d2, d1)).to.be.true;
+			expect(f(d3, d2)).to.be.false;
+			expect(f(d2, d3)).to.be.true;
 		});
 	});
 
@@ -147,6 +293,42 @@ describe('Conditional functions', function() {
 				});
 			});
 		});
+
+		it('should compare Dates semantically', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.false;
+		});
+
+		it('should compare SQLDates semantically', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.false;
+			expect(f(d2, d2)).to.be.false;
+			expect(f(d3, d3)).to.be.false;
+			expect(f(d1, d3)).to.be.false;
+			expect(f(d3, d1)).to.be.false;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.false;
+		});
 	});
 
 	describe('ge', function() {
@@ -173,6 +355,42 @@ describe('Conditional functions', function() {
 					expect(f(null, val), type).to.be.null;
 				});
 			});
+		});
+
+		it('should compare Dates semantically', function() {
+			const d1 = new Date(2022, 8, 20);
+			const d2 = new Date(1980, 5, 7);
+			const d3 = new Date(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.false;
+		});
+
+		it('should compare SQLDates semantically', function() {
+			const d1 = new SQLDate(2022, 8, 20);
+			const d2 = new SQLDate(1980, 5, 7);
+			const d3 = new SQLDate(2022, 8, 20);
+
+			// Semantically equal
+			expect(f(d1, d1)).to.be.true;
+			expect(f(d2, d2)).to.be.true;
+			expect(f(d3, d3)).to.be.true;
+			expect(f(d1, d3)).to.be.true;
+			expect(f(d3, d1)).to.be.true;
+
+			expect(f(d1, d2)).to.be.true;
+			expect(f(d2, d1)).to.be.false;
+			expect(f(d3, d2)).to.be.true;
+			expect(f(d2, d3)).to.be.false;
 		});
 	});
 

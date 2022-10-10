@@ -45,6 +45,84 @@ if (typeof module !== 'undefined') {
   }
 };
 /**
+ * This module implements SQL-like temporal types for OLAPScript.
+ *
+ * Copyright © 2022 Richard Wesley and Ellen Ratajak
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the “Software”), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies
+ * or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/**
+ * SQLDate - A pure date class
+ *
+ * Just a wrapper around Date that smacks some sense into it
+ *
+ */
+class SQLDate {
+	constructor(yyyy=1970, mm=0, dd=1) {
+		this.date_ = new Date(Date.UTC(yyyy, mm, dd));
+	}
+
+	getFullYear() {
+		return this.date_.getUTCFullYear();
+	}
+
+	getMonth() {
+		return this.date_.getUTCMonth();
+	}
+
+	getDate() {
+		return this.date_.getUTCDate();
+	}
+
+	getDay() {
+		return this.date_.getUTCDay();
+	}
+
+	valueOf() {
+		return this.date_.valueOf() / 1000;
+	}
+
+	toString() {
+		return this.date_.toISOString().slice(0, 10);
+	}
+};
+
+SQLDate.fromDate = function(ts) {
+	if (!(ts instanceof Date)) {
+		return ts;
+	}
+	if (ts.toISOString().indexOf('00:00:00.000') != -1) {
+		return new SQLDate(ts.getUTCFullYear(), ts.getUTCMonth(), ts.getUTCDate());
+	}
+	if (ts.getHours() || ts.getMinutes() || ts.getSeconds() || ts.getMilliseconds()) {
+		return ts;
+	}
+	return new SQLDate(ts.getFullYear(), ts.getMonth(), ts.getDate());
+}
+
+/**
+ * Node exports
+ */
+if (typeof module !== 'undefined') {
+  module.exports  = {
+    SQLDate
+  }
+};
+/**
  * This module implements expression trees for OLAPScript.
  *
  * Copyright © 2022 Richard Wesley and Ellen Ratajak
@@ -399,11 +477,28 @@ Expr.not = function(b) {
  * we have them in the library for potentially reasoning about expression trees.
  */
 Expr.eq = function(lhs, rhs) {
-	return Expr.nullWrapper_((l, r) => (l == r), lhs, rhs);
+	return Expr.nullWrapper_(function(l, r) {
+		if (l == r) {
+	 		return true;
+	 	}
+	 	if ((typeof l.valueOf === 'function') && (typeof r.valueOf === 'function')) {
+	 		return l.valueOf() == r.valueOf();
+	 	}
+	 	return false;
+	 },
+	 lhs, rhs);
 }
 
 Expr.ne = function(lhs, rhs) {
-	return Expr.nullWrapper_((l, r) => (l != r), lhs, rhs);
+	return Expr.nullWrapper_(function(l, r) {
+		if (l == r) {
+	 		return false;
+	 	}
+	 	if ((typeof l.valueOf === 'function') && (typeof r.valueOf === 'function')) {
+	 		return l.valueOf() != r.valueOf();
+	 	}
+	 	return true;
+	 }, lhs, rhs);
 }
 
 Expr.lt = function(lhs, rhs) {
@@ -1602,6 +1697,9 @@ if (typeof ConstExpr === 'undefined') {
 if (typeof Parser === 'undefined') {
   Parser = require("./parser").Parser;
 }
+if (typeof SQLDate === 'undefined') {
+  SQLDate = require("./timestamp").SQLDate;
+}
 
 /**
  * A table class for performing relational operations on Google Sheets
@@ -1836,9 +1934,14 @@ Table.fromSheet = function(sheet, options_p) {
 
 		// Pivot the data into columns
 		for (var c = 0; c < valueRange.getNumColumns(); ++c) {
-			const data = Array.from(values, row => row[c]);
-			const name = ordinals[c];
+			const raw = Array.from(values, row => row[c]);
+			var data = raw;
+			const dates = raw.map(d => SQLDate.fromDate(d));
+			if (dates.filter((d, i) => ((d !== raw[i]) || (d == null))).length == raw.length) {
+				data = dates;
+			}
 			const type = undefined;
+			const name = ordinals[c];
 			const col = new Column(type, data);
 			namespace[name] = col;
 		}

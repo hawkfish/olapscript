@@ -322,6 +322,42 @@ describe('Table', function() {
         });
       });
     });
+    it('should read a table with a date column', function() {
+      const contents = [
+      	['Name', 'DOB'],
+      	['Fred', new Date(1960, 5, 12)],
+      	['Wilma', new Date(1963, 4, 21)],
+      	['Barney', new Date(1962, 8, 1)],
+      	['Betty', new Date(1964, 2, 1)],
+      ];
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet);
+      const data = actual.namespace['DOB'].data;
+      expect(data.length).to.equal(contents.length - 1);
+      actual.selection.forEach(function(selid) {
+      	expect(data[selid] instanceof SQLDate).to.be.true;
+      });
+    });
+    it('should read a table with a date column containing nulls', function() {
+      const contents = [
+      	['Name', 'DOB'],
+      	['Fred', new Date(1960, 5, 12)],
+      	['Wilma', null],
+      	['Barney', new Date(1962, 8, 1)],
+      	['Betty', new Date(1964, 2, 1)],
+      ];
+      const sheet = new Sheet('Inside', contents);
+      const actual = Table.fromSheet(sheet);
+      const data = actual.namespace['DOB'].data;
+      expect(data.length).to.equal(contents.length - 1);
+      actual.selection.forEach(function(selid) {
+      	if (selid != 1) {
+      		expect(data[selid] instanceof SQLDate, 'Row ' + selid).to.be.true;
+      	} else {
+      		expect(data[selid]).to.be.null;
+      	}
+      });
+    });
   });
 });
 

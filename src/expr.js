@@ -353,11 +353,28 @@ Expr.not = function(b) {
  * we have them in the library for potentially reasoning about expression trees.
  */
 Expr.eq = function(lhs, rhs) {
-	return Expr.nullWrapper_((l, r) => (l == r), lhs, rhs);
+	return Expr.nullWrapper_(function(l, r) {
+		if (l == r) {
+	 		return true;
+	 	}
+	 	if ((typeof l.valueOf === 'function') && (typeof r.valueOf === 'function')) {
+	 		return l.valueOf() == r.valueOf();
+	 	}
+	 	return false;
+	 },
+	 lhs, rhs);
 }
 
 Expr.ne = function(lhs, rhs) {
-	return Expr.nullWrapper_((l, r) => (l != r), lhs, rhs);
+	return Expr.nullWrapper_(function(l, r) {
+		if (l == r) {
+	 		return false;
+	 	}
+	 	if ((typeof l.valueOf === 'function') && (typeof r.valueOf === 'function')) {
+	 		return l.valueOf() != r.valueOf();
+	 	}
+	 	return true;
+	 }, lhs, rhs);
 }
 
 Expr.lt = function(lhs, rhs) {

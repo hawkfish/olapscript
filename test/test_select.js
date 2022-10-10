@@ -13,7 +13,7 @@ describe('Table', function() {
 		const customers = [
 			['Customer Name', 'Address Line 1', 'Address Line 2', 'City', 'State', 'ZIP'],
 			['Joe Blow', '123 Elm Street', 'Apt 3B', 'Anywhere', 'NY', 10036],
-			['Mary Smith', '1274 Broadway', '', 'WA', 98105],
+			['Mary Smith', '1274 Broadway', '', 'Seattle', 'WA', 98105],
 			['Dupe Earl', '4810 Blackstone Blvd', '', 'Providence', 'RI', 02318],
 		];
 

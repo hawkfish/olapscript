@@ -66,6 +66,9 @@ if (typeof ConstExpr === 'undefined') {
 if (typeof Parser === 'undefined') {
   Parser = require("./parser").Parser;
 }
+if (typeof SQLDate === 'undefined') {
+  SQLDate = require("./timestamp").SQLDate;
+}
 
 /**
  * A table class for performing relational operations on Google Sheets
@@ -300,9 +303,14 @@ Table.fromSheet = function(sheet, options_p) {
 
 		// Pivot the data into columns
 		for (var c = 0; c < valueRange.getNumColumns(); ++c) {
-			const data = Array.from(values, row => row[c]);
-			const name = ordinals[c];
+			const raw = Array.from(values, row => row[c]);
+			var data = raw;
+			const dates = raw.map(d => SQLDate.fromDate(d));
+			if (dates.filter((d, i) => ((d !== raw[i]) || (d == null))).length == raw.length) {
+				data = dates;
+			}
 			const type = undefined;
+			const name = ordinals[c];
 			const col = new Column(type, data);
 			namespace[name] = col;
 		}
