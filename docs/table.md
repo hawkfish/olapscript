@@ -248,6 +248,8 @@ The currently supported options are:
 | Name  | Type    | Description | Default |
 | :---- | :------ | :---------- | ------: |
 | clear | Boolean | Clears the entire sheet | `false` |
+| top   | number  | The first row to write to (one-based) | `1` |
+| left  | number  | The first column to write to (one-based) | `1` |
 
 ### tables
 
