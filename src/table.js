@@ -353,8 +353,11 @@ Table.fromRows = function(rows, options_p) {
  * @param {Sheet} sheet
  * @returns {Table}
  */
-Table.prototype.toSheet = function(sheet) {
-  sheet.clearContents();
+Table.prototype.toSheet = function(sheet, options_p) {
+	const options = options_p || {clear: false};
+	if (options.clear) {
+		sheet.clearContents();
+	}
   const lastColumn = this.ordinals.length;
   if (lastColumn == 0) {
     return this;

@@ -226,10 +226,10 @@ The de-duplication will not overwrite existing column names:
 
 | Original | Renamed |
 | :------- | :------ |
-| Name | Name |
-| Name 2 | Name 2 |
-| Age | Age |
-| Name | _Name 3_ |
+| Name     | Name    |
+| Name 2   | Name 2  |
+| Age      | Age     |
+| Name     | _Name 3_ |
 
 ### toSheet
 
@@ -239,8 +239,15 @@ This replaces the contents of the given sheet with the `Table`.
 ```js
 const app = SpreadsheetApp;
 const ss = app.getActiveSpreadsheet();
-table.toSheet(ss.getSheetByName("My Sheet"));
+const options = {}
+table.toSheet(ss.getSheetByName("My Sheet"), options);
 ```
+
+The currently supported options are:
+
+| Name  | Type    | Description | Default |
+| :---- | :------ | :---------- | ------: |
+| clear | Boolean | Clears the entire sheet | `false` |
 
 ### tables
 
