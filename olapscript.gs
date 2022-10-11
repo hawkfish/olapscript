@@ -1985,14 +1985,17 @@ Table.fromRows = function(rows, options_p) {
  * @returns {Table}
  */
 Table.prototype.toSheet = function(sheet, options_p) {
-	const options = options_p || {clear: false};
+	const defaults = {clear: false, top: 1, left: 1};
+  const options = Object.assign({}, defaults, options_p || {});
+
 	if (options.clear) {
 		sheet.clearContents();
 	}
-  const lastColumn = this.ordinals.length;
-  if (lastColumn == 0) {
+  if (this.ordinals.length == 0) {
     return this;
   }
+  const firstColumn = options.left;
+  const lastColumn = firstColumn + this.ordinals.length - 1;
 
   // Make it the correct size
   var maxColumns = sheet.getMaxColumns();
@@ -2001,7 +2004,9 @@ Table.prototype.toSheet = function(sheet, options_p) {
     maxColumns = lastColumn;
   }
 
-  const lastRow = 1 + this.getRowCount();
+	const headerRow = options.top;
+	const firstRow = headerRow + 1;
+  const lastRow = firstRow + this.getRowCount() - 1;
   var maxRows = sheet.getMaxRows();
   if (maxRows < lastRow) {
     sheet.insertRowsAfter(maxRows, lastRow - maxRows);
@@ -2009,12 +2014,12 @@ Table.prototype.toSheet = function(sheet, options_p) {
   }
 
   // Write the column headers in the first row
-  const header = sheet.getRange(1, 1, 1, lastColumn);
+  const header = sheet.getRange(headerRow, firstColumn, 1, this.ordinals.length);
   header.setValues([this.ordinals,]);
 
   // Write the column data to the columns
-  if (lastRow > 1) {
-    const range = sheet.getRange(2, 1, lastRow - 1, lastColumn);
+  if (lastRow > firstRow) {
+    const range = sheet.getRange(firstRow, firstColumn, lastRow - headerRow, this.ordinals.length);
     const that = this;
     // Row-major order
     range.setValues(that.selection.map(selid => this.ordinals.map(name => that.namespace[name].data[selid])));
