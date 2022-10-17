@@ -1,11 +1,11 @@
 # Table
 
-The `Table` class is the object that does all the heavy lifting for OLAPScript. 
+The `Table` class is the object that does all the heavy lifting for OLAPScript.
 Each `Table` object has methods that implement various OLAP and data cleaning operations
 and return a new table.
 
 `Tables` are column-oriented, which means that all the data is stored column-wise.
-Columnar layout is the preferred format for analytic workloads because 
+Columnar layout is the preferred format for analytic workloads because
 it makes adding and deleting attributes simpler.
 
 ## Components
@@ -22,8 +22,8 @@ This ordering is used for writing `Tables` out in user-visible form.
 
 ### Selection
 
-All the `Table` operations are implemented so as to reduce data copying and will often just change an internal list of rows 
-called the `selection`. 
+All the `Table` operations are implemented so as to reduce data copying and will often just change an internal list of rows
+called the `selection`.
 * When a `Table` is filtered, the result has the same data but a smaller `selection` list.
 * When a `Table` is sorted, the result again has the same data, but the `selection` has been reordered.
 
@@ -106,12 +106,18 @@ Supported options:
 | Name | Type   | Description | Values |
 | :--- | :----- |:----------- | :----- |
 | type | string | Join type   | `'inner'` (default), `'left'`, `'right'`, `'full'` |
+| imports | Object | Build column name mapping | `{build_name: "result_name"}` |
 
 The default inner join will only return matches from both tables.
 A  _left_ (outer)join will return all values from the left (probe) table,
 filling in `null`s for the missing right (build) table.
 A _right_ (outer) join does the opposite and a _full_ (outer) join
 will do both and have all rows from both tables.
+
+By default, the output table has the columns of the left/probe table
+and any columns from the right/build table that do not conflict with them.
+To import conflicting names, you can use the `imports` options to provide new names.
+Any conflicts in this mapping will also be dropped.
 
 One common application is to add data to a table in a star schema.
 For example, you might have a list of users (generally called a _dimension_ table)
@@ -211,7 +217,7 @@ If `header` is unspecified (`null`) then the first row is taken to be the header
 and `top` is incremented by `headerCount`.
 If there is no header (`headerCount` set to `0`) then `columns` is used instead.
 If there are multiple header rows, then each column name is made by concatenating all the
-non-empty values in the header cells, separated by spaces. 
+non-empty values in the header cells, separated by spaces.
 
 `fromSheet` also provides column name de-duplication by adding numbers to the end of duplicate column names:
 
@@ -324,4 +330,4 @@ To make it easier on the user, there are several methods that can infer missing 
 * `normaliseExpr` will expand single arguments to `Arrays and even convert anything without an `evaluate` method to a `ConstExpr`
 * `normaliseBinding` will convert an expression to a binding by inferring the `as` from the `alias` and then normalise the expression itself.
 * `normaliseAggr` performs normalisation on an aggregate function arguments and makes sure they are an `Array`.
-* `normaliseOrder` converts expressions into ordering specifications with default values and normalises the expression. 
+* `normaliseOrder` converts expressions into ordering specifications with default values and normalises the expression.

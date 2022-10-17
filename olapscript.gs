@@ -2363,9 +2363,16 @@ Table.equiJoinKeys = function(predicate) {
  */
 Table.prototype.equiJoin = function(build, keys, options_p) {
   // Normalise the options
-  const options = Object.assign({}, {type: 'inner'} , options_p || {});
-  const leftOuter = options.type in {left: null, full: null};
-  const rightOuter = options.type in {right: null, full: null};
+  const defaults = {
+  	type: 'inner',
+  	imports: build.ordinals.reduce(function(imports, name) {
+  		imports[name] = name;
+  		return imports;
+  	}, {})
+  };
+  const options = Object.assign({}, defaults, options_p || {});
+  const leftOuter =  ["left", "full"].includes(options.type);
+  const rightOuter =  ["right", "full"].includes(options.type);
 
   // Normalise the arguments
   if (typeof keys == 'string') {
@@ -2384,12 +2391,16 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
   // Sort out the output schema
   // All the probe columns will be imported;
   // Only build columns that do not have name collisions will be imported.
-  const buildImports = build.ordinals.filter(name => !probe.namespace.hasOwnProperty(name));
-  const ordinals = probe.ordinals.map(name => name).concat(buildImports);
+  const buildImports = Object.entries(options.imports)
+  	.filter(([key, value]) => build.namespace.hasOwnProperty(key))
+  	.filter(([key, value]) => !probe.namespace.hasOwnProperty(value))
+  	.map(([key, value]) => key)
+  ;
+  const ordinals = probe.ordinals.map(name => name).concat(buildImports.map(name => options.imports[name]));
 
   const namespace = probe.emptyNamespace_();
   const buildNamespace = build.emptyNamespace_();
-  buildImports.forEach(name => namespace[name] = buildNamespace[name]);
+  buildImports.forEach(name => namespace[options.imports[name]] = buildNamespace[name]);
 
   // Build keys => expr
   const buildKeys = keys.map(pair => pair.build.evaluate(build.namespace, build.selection, build.length));
@@ -2430,7 +2441,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
         });
         // Import the build data
         buildImports.forEach(function(name) {
-          namespace[name].data.push(build.namespace[name].data[buildID]);
+          namespace[options.imports[name]].data.push(build.namespace[name].data[buildID]);
         });
         buildMatches[buildID] = true;
       });
@@ -2447,7 +2458,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
         });
         // Use nulls for the build data
         buildImports.forEach(function(name) {
-          namespace[name].data.push(null);
+          namespace[options.imports[name]].data.push(null);
         });
       }
     });
@@ -2462,7 +2473,7 @@ Table.prototype.equiJoin = function(build, keys, options_p) {
         });
         // Import the build data
         buildImports.forEach(function(name) {
-          namespace[name].data.push(build.namespace[name].data[buildID]);
+          namespace[options.imports[name]].data.push(build.namespace[name].data[buildID]);
         });
       }
     });

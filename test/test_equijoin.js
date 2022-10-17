@@ -20,6 +20,20 @@ describe('Table', function() {
     {fk: null, amt: 0}
   ];
 
+	const lobster_rows = [
+		{ID: 1, payload: "Tis"},
+		{ID: 4, payload: "the"},
+		{ID: 7, payload: "voice"}
+	];
+	const slithy_rows = [
+		{ID: 1, payload: "Twas"},
+		{ID: 2, payload: "brillig"},
+		{ID: 3, payload: "and"},
+		{ID: 4, payload: "the"},
+		{ID: 5, payload: "slithy"},
+		{ID: 6, payload: "toves"}
+	];
+
 	describe('equiJoinKeys', function() {
     it('should convert single equality conditions', function() {
     	const setup = new Parser('"fk" = "pk"').parse();
@@ -217,6 +231,57 @@ describe('Table', function() {
 			expect(actual.namespace['First'].data).to.deep.equal(['', '', '', '']);
 			expect(actual.namespace['Last'].data).to.deep.equal(['R', 'R', 'R', 'R']);
 			expect(actual.namespace['Email'].data).to.deep.equal([ 'ab@cd.ef', 'gh@ij.kl', 'ab@cd.ef', 'gh@ij.kl' ]);
+    });
+
+    it('should rename imported columns for inner joins', function() {
+      const options = {imports: {payload: "build_payload"}};
+      const build = Table.fromRows(lobster_rows);
+      const probe = Table.fromRows(slithy_rows);
+      const actual = probe.equiJoin(build, '"ID" = "ID"', options);
+      expect(actual.getRowCount()).to.equal(2);
+			expect(actual.ordinals).to.deep.equal(['ID', 'payload', 'build_payload']);
+			expect(actual.namespace['ID'].data).to.deep.equal([ 1, 4] );
+			expect(actual.namespace['payload'].data).to.deep.equal([ "Twas", "the"] );
+			expect(actual.namespace['build_payload'].data).to.deep.equal([ "Tis", "the"] );
+    });
+
+    it('should rename imported columns for left joins', function() {
+      const options = {type: 'left', imports: {payload: "build_payload"}};
+      const build = Table.fromRows(lobster_rows);
+      const probe = Table.fromRows(slithy_rows);
+      const actual = probe.equiJoin(build, '"ID" = "ID"', options);
+      expect(actual.getRowCount()).to.equal(6);
+			expect(actual.ordinals).to.deep.equal(['ID', 'payload', 'build_payload']);
+			expect(actual.namespace['ID'].data).to.deep.equal([ 1, 4, 2, 3, 5, 6] );
+			expect(actual.namespace['payload'].data).to.deep.equal([ "Twas", "the", "brillig", "and", "slithy", "toves"] );
+			expect(actual.namespace['build_payload'].data).to.deep.equal([ "Tis", "the", null, null, null, null] );
+    });
+
+    it('should rename imported columns for right joins', function() {
+      const options = {type: 'right', imports: {payload: "build_payload", ID: "build_ID"}};
+      const build = Table.fromRows(lobster_rows);
+      const probe = Table.fromRows(slithy_rows);
+      const actual = probe.equiJoin(build, '"ID" = "ID"', options);
+      expect(actual.getRowCount()).to.equal(3);
+			expect(actual.ordinals).to.deep.equal(['ID', 'payload', 'build_payload', 'build_ID']);
+			expect(actual.namespace['ID'].data).to.deep.equal([ 1, 4, null] );
+			expect(actual.namespace['build_ID'].data).to.deep.equal([ 1, 4, 7]);
+			expect(actual.namespace['payload'].data).to.deep.equal([ "Twas", "the", null] );
+			expect(actual.namespace['build_payload'].data).to.deep.equal([ "Tis", "the", "voice"] );
+    });
+
+    it('should rename imported columns for full outer joins', function() {
+      const options = {type: 'full', imports: {payload: "build_payload", ID: "build_ID"}};
+      const build = Table.fromRows(lobster_rows);
+      const probe = Table.fromRows(slithy_rows);
+      const actual = probe.equiJoin(build, '"ID" = "ID"', options);
+      expect(actual.getRowCount()).to.equal(7);
+			expect(actual.ordinals).to.deep.equal(['ID', 'payload', 'build_payload', 'build_ID']);
+			expect(actual.namespace['ID'].data).to.deep.equal([ 1, 4, 2, 3, 5, 6, null]);
+			expect(actual.namespace['build_ID'].data).to.deep.equal([ 1, 4, null, null, null, null, 7]);
+			expect(actual.namespace['payload'].data).to.deep.equal(
+				["Twas", "the", "brillig", "and", "slithy", "toves", null] );
+			expect(actual.namespace['build_payload'].data).to.deep.equal(["Tis", "the", null, null, null, null, "voice"]);
     });
   });
 });
